@@ -1,0 +1,527 @@
+---
+title: "Statistical learning - individual assignment 1"
+author: "Joshua Damm"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part A: Supervised
+
+## Question 1
+
+When looking at the relevant predictor variables \( X_1 \)-\( X_3 \), we can see that that they are drawn from uniform and normal distributions. All noise variables are drawn from uniform distributions. The response is set up as a non-linear transformation of the three predictor variables, including polynomials and indicator variables, suggesting a complex non-linear relationship between the predictors and the response.
+
+Considering the bias-variance trade-off and the 0-1 loss framework, KNN tends to have lower bias but higher variance compared to parametric models like LASSO logistic regression. In situations where the underlying relationship is complex or non-linear, KNN might perform better due to its flexibility, while LASSO might generalize better if the true relationship is simpler and can be captured by a linear model. Therefore, for the variables \( X_1 \)-\( X_6 \), kNN might be able to detect potentially non-linear relationships. However, kNN is also sensitive to noise and overfitting especially when irrelevant predictors like \( X_4 \)-\( X_6 \) are included. LASSO logistic regression, known for its regularization strength, introduces bias through coefficient shrinkage but significantly lowers variance by effectively eliminating irrelevant predictors. This attribute of LASSO, where it zeroes out coefficients for noise variables, simplifies the model and focuses it on the relevant variables, thereby enhancing predictive accuracy and robustness.
+
+Given the setup with three relevant predictors and three noise variables, LASSO might shrink the predictors of the noise variables to low values or even to zero, but might also fail to detect the non-linear relationsships in the data. kNN has a tendency to overfit, but given only three noise variables, its decision boundary might still provide a good fit for classification and it is able to detect non-linearities. Therefore, I expect kNN to outperform LLR.
+
+
+
+
+
+
+## Question 2
+
+In this scenario when looking at all predictors, i.e. three relevant predictor variables \( X_1 \)-\( X_3 \) and 200 noise variables \( X_4 \) -\( X_{203}\) I expect the property of Lasso Logistic Regression penalization, dimensionality-reduction and variance reduction properties to shine by eliminating a decent amount of noise variables from the final model. The LLR model might still fail to detect the non-linear relationships between the predictors and the response, but it might still give a good enough fit to predict the outcome with a decent accuracy. KNN on the other hand is very likely to overfit due to the massive amount of noise in the data, probably leading to a low prediction accuracy.
+
+
+## Question 3
+
+```{r, include = FALSE}
+# Selecting data
+library(readr)
+library(caret)
+library(class)
+library(glmnet)
+library(ModelMetrics)
+library(dplyr)
+library(nFactors)
+library(ISLR2)
+library(HSAUR)
+
+setwd('/Users/joshd/Library/Mobile Documents/com~apple~CloudDocs/statistics_DS/statistical_learning/assignments/individual/01/')
+rm(list = ls())
+
+data_set <- read_csv("Data4036018.csv")
+
+# consider only Y and first 6 predictors
+sub_dataset <- data_set[, 1:7]
+
+train <- sub_dataset[1:5000, ]
+test <- sub_dataset[5001:10000, ]
+
+# Select relevant predictors (X1 to X3) and irrelevant predictors (X4 to X6)
+predictors <- c("X1", "X2", "X3", "X4", "X5", "X6")
+
+# Define training and test sets with relevant predictors
+x_train <- train[, predictors]
+y_train <- train$Y
+x_test <- test[, predictors]
+y_test <- test$Y
+```
+
+## Question 3a
+
+```{r, include = FALSE}
+# convert binary reponse Y to factor
+y_test <- factor(test$Y)
+
+# Define the training control = 10-fold cross validation
+train_control <- trainControl(method = "cv", number = 10)
+
+
+# cross-validate the knn model with candidate ks
+set.seed(4036018)
+knn_model <- train(Y ~ X1 + X2 + X3 + X4 + X5 + X6,
+                   data = train,
+                   method = "knn",
+                   tuneGrid = data.frame(k = seq(1,200, by = 1) #72.19996 Highest accuracy
+                   ),
+                   trControl = train_control,
+                   preProcess = c("center","scale"))
+# Print the optimal k and corresponding accuracy
+print(knn_model$bestTune)
+
+# model results
+print(knn_model$results)
+```
+
+
+```{r, include = FALSE}
+# Predict on test data using the best K
+test_predictions <- predict(knn_model, newdata = x_test)
+
+# Calculate accuracy
+test_accuracy <- sum(test_predictions == y_test) / length(y_test)
+print(paste("Test Accuracy:", test_accuracy))
+
+# Optionally, also calculate training accuracy
+train_predictions <- predict(knn_model, newdata = x_train)
+train_accuracy <- sum(train_predictions == y_train) / length(y_train)
+print(paste("Train Accuracy:", train_accuracy))
+```
+
+
+First I created a subset with the 3 relevant predictors \( X_1 \) - \( X_3 \) and 3 noise variables \( X_4 \) - \( X_6 \). Then I split the data into training and test data on a 50/50 split procedure. Then I partitioned the training data into 10 random distinct subsets and ran kNN so that each group once was treated as the test set (10-fold cross validation). This procedure was repeated for every k between 1 and 200 to fit the kNN model. Looking at the prediction accuracy on the training data revealed that a k-value of 79 brings the best classification accuracy of 72,01956%. Given the training set of 5000 observations, this seems to be a reasonable value for k as it provides a good balance between under- and overfitting, potentially slighly underfitting the data, because with k = 79 it smoothes the decision boundary significantly and provides a more generalized result. However, it is crucial to be aware of the fact that KNN is very prone to catching noise in the data, and in this training sample we already deal with 3 noise variables, which might underfit the kNN model. When predicting \( Y \) on the test data, the kNN model achieved an accuracy of 71.74%.
+
+
+```{r, include = FALSE}
+# Perform Lasso Logistic Regression with 10-fold cross-validation
+set.seed(4036018)
+
+#setup data
+x_train <- as.matrix(train[, -which(names(train) == "Y")])
+x_test <- as.matrix(test[, -which(names(test) == "Y")])
+y_test <- factor(test$Y)
+
+llr_model <- cv.glmnet(x =  x_train, y = train$Y, family = "binomial", type.measure = 'class', alpha = 1, nfolds = 10)
+
+# Optimal lambda
+optimal_lambda <- llr_model$lambda.min
+print(optimal_lambda)
+
+# Fit model using the optimal lambda
+final_model <- glmnet(x =  x_train, y = train$Y, family = "binomial", type.measure = 'class', alpha = 1, lambda = optimal_lambda)
+
+# Predict using the final model
+predictions <- predict(final_model, s = optimal_lambda, newx = x_test, type = "class")
+
+
+# Calculate accuracy
+accuracy <- mean(predictions == y_test)
+print(paste("Accuracy:", accuracy))
+
+
+```
+
+## Question 3b
+
+First I rearranged the data so that I have a design matrix with variables \( X_1 \) - \( X_6 \) and a binary response vector \( Y \) for both training and testing data. Then I performed Lasso Logistic Regression using 10-fold cross validation to estimate the optimal lambda parameter which is used to introduce a little bias to the logistic regression function in order to reduce the variance and shrink coefficients that are not relevant for the classification of \( Y \). An optimal shrinkage parameter lambda of 0.0103088 was found. For the final model a Lasso Logistic Regression with the optimal lambda was fit on the full training data,leading to a logistic regression equation of \[
+\log\left(\frac{p}{1-p}\right) = -0.3262648 + 0.682162745 X_1 + 0.131761208 X_2 + 0.167683487 X_3 + 0.008122535 X_4
+\] with p being the probability of \( Y = 1 \). Therefore, the noise variable coefficients for \( X_5 \) and \( X_6 \) were shrunken down to 0 and for the noise variable \( X_4 \) the coefficient is shrunken down to a very low value of appr. 0.008. Finally, this model was used to predict the response \( Y \) on the test data, and misclassifications on the true \( Y \) values were averaged, showing a classification accuracy of 67.28%.
+
+## Question 3c
+After fitting both kNN and Lasso Logistic Regression on the training data and testing their accuracy on the test data, kNN revealed a prediction accuracy of 71.74%, wheres Lasso Logistic Regression only achieved an accuracy of 67.28%. The results are somewhat expected, since kNN outperformed Lasso Logistic Regression (LLR) in terms of prediction accuracy, probably due to catching the non-linear relationships between the predictors and the response and by providing a well fitted decision boundary to still distinguish between relevant predictors and noise in the data. LLR on the other hand, was able to shrink all three noise variables \( X_4 \) - \( X_6 \) close or precisely to zero. This would suggest that LLR would be able to give a higher prediction accuracy on the test data. However, in this case detecting the non-linear relationships might be more important to catch the pattern in the data than separating signal from noise.
+
+
+## Question 4 
+
+## Question 4a
+```{r, include = FALSE}
+data_set <- read_csv("Data4036018.csv")
+
+# consider only Y and first 6 predictors
+dataset <- data_set
+
+train <- dataset[1:5000, ]
+test <- dataset[5001:10000, ]
+
+# Define training and test sets with relevant predictors
+x_train <- select(train, -Y)
+y_train <- factor(train$Y)
+x_test <- select(test, -Y)
+y_test <- factor(test$Y)
+```
+
+```{r, include = FALSE}
+## RUN KNN ON ALL PREDICTORS
+
+# Define the training control = 10-fold cross validation
+train_control <- trainControl(method = "cv", number = 10)
+
+
+# cross-validate the knn model with candidate ks
+set.seed(4036018) 
+knn_model_all <- train(x_train, y_train,
+                   method = "knn",
+                   tuneGrid = data.frame(k = seq(1,200, by = 1) #72.19996 Highest accuracy
+                   ),
+                   trControl = train_control,
+                   preProcess = c("center","scale"))
+# Print the optimal k and corresponding accuracy
+print(knn_model_all$bestTune)
+
+# model results
+print(knn_model_all$results)
+
+# Predict on test data using the best K
+test_predictions <- predict(knn_model_all, newdata = x_test)
+
+# Calculate accuracy
+test_accuracy <- sum(test_predictions == y_test) / length(y_test)
+print(paste("Test Accuracy:", test_accuracy))
+
+# Optionally, also calculate training accuracy
+train_predictions <- predict(knn_model_all, newdata = x_train)
+train_accuracy <- sum(train_predictions == y_train) / length(y_train)
+print(paste("Train Accuracy:", train_accuracy))
+```
+
+I ran kNN on the whole data set including all relevant predictors and noise variables. When trained on the training data using 10-fold cross validation k = 41 revealed the best prediction accuracy of 58.62%. The procedure was the same as in 3a except including all variables. This fitted kNN model was then used to predict the reponse in the test data, showing a test accuracy of  57.14%.
+
+
+## Question 4b
+```{r, include = FALSE}
+# Perform Lasso Logistic Regression with 10-fold cross-validation
+set.seed(4036018)
+
+#setup data
+x_train <- as.matrix(train[, -which(names(train) == "Y")])
+x_test <- as.matrix(test[, -which(names(test) == "Y")])
+
+
+llr_model <- cv.glmnet(x =  x_train, y = train$Y, family = "binomial", type.measure = 'class', alpha = 1, nfolds = 10)
+
+# Optimal lambda
+optimal_lambda <- llr_model$lambda.min
+print(optimal_lambda)
+
+# Fit model using the optimal lambda
+final_model <- glmnet(x =  x_train, y = train$Y, family = "binomial", type.measure = 'class', alpha = 1, lambda = optimal_lambda)
+
+#show coefficients
+print(final_model$beta)
+
+# Predict using the final model
+predictions <- predict(final_model, s = optimal_lambda, newx = x_test, type = "class")
+
+
+# Calculate accuracy
+accuracy <- mean(predictions == y_test)
+print(paste("Accuracy:", accuracy))
+```
+
+I fitted the Lasso Logistic Regression (LLR) model using the same procedure as in 3b, this time including all variables. 10-fold cross validation revealed an optimal lambda tuning parameter of 0.005899074. Importantly, LLR was able to shrink all noise predictors close to or precisely to zero, thereby effectively reducing variance and dimensionality. Fitting the LLR with the optimal lambda again on the full test data and then using this model to predict the outcome Y on the test data revealed a test accuracy of 67.02%.
+
+
+## Question 4c
+
+When comparing the accuracy of both models, kNN showed a prediction accuracy of 57.14% on the test data, whereas Lasso Logistic Regression (LLR) revealed an accuracy of 67.02%. This result is expected as in the case of including all noise variables \( X_4 \) - \( X_{203} \) LLR is expected to shrink these variables close or precisely to zero, which occured in the present analysis. LLR is still not able to detect non-linear relationships between the predictors and the response, but LLR's linear classification was still sufficient to show a solid prediction accuracy. kNN on the other hand, already showed bias when fitted on the training data (62.76%), and showed poorer prediction accuracy on the test data, as it was not able to separate the relevant predictors from the noise variables. This suggests that kNN in this context shows both high variance and high bias. 
+
+
+
+
+
+#### PART B: UNSUPERVISED LEARNING ####
+
+```{r, include = FALSE}
+rm(list = ls())
+data_US <- read.csv('data.US.csv', sep = ',')
+
+#remove index variable 'X' 
+data_US <- select(data_US, -'X')
+```
+
+
+## Question B1
+
+Dimensionality-reduction in this case might be a good idea in case variables are highly correlated with each other. One must be aware though that information might get lost when we reduce dimensionality, possibly leading to a less nuanced assessment of personality groups. On the other hand reducing dimensionality is beneficial to get a clearer sight on which core facets of personality explains the variation in our student sample. Therefore it is easier to understand, describe and interpret the different personality groups eventually. One method to achieve this grouping and dimensionality reduction might be Principal Component Analysis (PCA). PCA transforms the original variables into a new set of variables (principal components), which are uncorrelated, and which are ordered so that the first few retain most of the variation present in all of the original variables.PCA is appropriate when the goal is to reduce the dimensionality in the data while retaining as much of the variability as possible. It’s especially useful when variables are highly correlated like in the present sample, and the goal is to summarize the variations in personality with a smaller number of representative variables that collectively explain most of the variability.
+
+## Question B2
+
+```{r, include = FALSE}
+
+# Run PCA without scaling since variables have already been standardized
+pca_result = prcomp(data_US, scale=FALSE)
+summary(pca_result)
+
+# Explained variance per component plotted
+par(mfrow=c(1,2))
+plot(pca_result)
+```
+
+```{r, include = FALSE}
+#Decide on how many components to keep using Kaiser’s rule, the cumulative PVE and a scree plot, and averaged Eigenvalues-rule
+
+# Eigenvalues
+ev <- eigen(cor(data_US))
+ev$values
+
+# PVE and cumulative PVE
+prop_var_expl_sc = summary(pca_result)$importance[2,]
+cumul_prop_var_expl_sc = summary(pca_result)$importance[3,]
+
+
+plot(prop_var_expl_sc, type="b", xlab="Component number (sc.)",
+    ylab="Proportion variance explained", ylim=c(0,1) )
+
+```
+
+```{r, echo = FALSE}
+plot(cumul_prop_var_expl_sc, type="b", xlab="Number of components (sc.)",
+    ylab="Cumulative prop. var. expl.", ylim=c(0,1) )
+```
+
+```{r, include = FALSE}
+# investigate scree plot 
+cumul_prop_var_expl <- cumul_prop_var_expl_sc
+nElem=length(cumul_prop_var_expl_sc)
+ratios=(cumul_prop_var_expl[2:(nElem-1)]-cumul_prop_var_expl[1:(nElem-2)])/
+(cumul_prop_var_expl[3:nElem]-cumul_prop_var_expl[2:(nElem-1)])
+ratios
+
+# select components
+nComponents_selected = which.max( ratios ) + 1
+nComponents_selected
+```
+
+
+```{r, echo = FALSE}
+#parallel analysis
+ap <- parallel(subject=nrow(data_US), var=ncol(data_US), rep=1000)
+nS <- nScree(x=ev$values, aparallel=ap$eigen$qevpea)
+plotnScree(nS,main="")
+```
+
+I ran Principal Component Analysis (PCA) on the already scaled variables and decided to use the proportion of variance explained (PVE), cumulative proportion of variance explained (CPVE), a scree-plot (elbow-plot), and Horn's parallel analysis to decide which principal components (PC's) to keep derive new personality variables in order to group the subjects. The scree plot plots the CPVE for each PC in ascending order. The CPVE for a PC is computed as the cumulative sum of the PVE of each component up to the component of interest. As one can see in the scree (elbow) plot, there is a knick in the elbow plot at PC 5. I also looked at the ratios of the change in CPVE between the PC's which suggests that going from component 5 to component 6 (ratio = 1.619536) there the highest drop in CPVE. PC5 has a PVE of 5.37%, whereas PC6 only has a PVE of 3.32%, followed by equally low PVE's for the remaining PC's. So PVE, CPVE and the elbow method suggest to keep 5 components. This is also confirmed by using Kaiser's rule. When looking at the Eigenvalues of the correlation matrix, PC1 - PC5 show an Eigenvalue which is greater than 1. PC6 shows a tendency to reach Kaiser's criterion (lambda =  0.9949349). Runnings Horn's Parralel Analysis shows that the 5th Eigenvalue from our data set is still greater than the mean of the Eigenvalues of the simulated parallel data. However, as one can see on the scree plot for parallel analysis, the 6th Eigenvalue falls right on the mean of the Eigenvalues of the simulated data. In summary, PVE, CPVE, and the elbow method suggests to keep 5 PC's, whereas Kaiser's rule and parallel analysis would also allow to keep 6 components under reasonable scientific circumstances. I decide to be conservative and keep 5 components, since PC6 would only explain 3.32% variance additionally and would complicate interpretability. Altogether, these 5 PC's explain 56.89% of the variance in the data.
+
+
+
+## Question B3
+
+To give meaning to the new derived variables / Principal Components (PC's) one has to see how the original variables load on the new derived variables. PCA ensures that the new variables capture as much of the variability in the original variables as possible. However, one has to to keep in mind that only 56.89% of the variance in the data could be explained by using our selected 5 PC's. After running PCA, I investigated the loadings of the original variables on the newly found PC's. In order to see patters in the data and interpret the results, I performed varimax rotation, which rotates the axes of the principal components to maximize the variance of the squared loadings of a PC on all the original variables in a given loading matrix. The goal is to make high loadings higher and low loadings lower for each PC, hence simplifying the PC's for interpretability. For a very broad assessment, I could extract some obvious pattern in the rotated loading matrix. For PC1 expecially V1 - to V6 show very high negative loadings on this PC. For PC2, V8 - V13 show very high negative loadings, whereas for PC3, V20 - V25 show high positive loadings. For PC4, V26-V31 show high negative loadings, and for PC5 V14 - V19 show hgh negative loadings. Another obvious observation is that for PC5, only V14 to V19 load positively, one other variable loads slightly negatively (V27), but all other variables do not load at all on this PC after varimax, suggesting that this component captures a unique aspect of personality variation in the data. 
+
+For interpretability, PC1 mainly captures, anxiety, angry hostility, depression, self-consciousness, impulsiveness, and vulnerabilty, traits also referred to as emotional instability or neuroticism. PC2 mainly captures warmth, gregariousess, assertiveness, activity, excitement-seeking, positive emotions, and fantasy, traits often referred to as extraversion. PC3 mainly captures trust, straightforwardness, altruism, compliance, modesty, and tender-mindedness, traits often referred to as agreeableness. PC4 mainly captures competence, order, dutifulness, achievement striving, self-discipline and deliberation, traits often referred to as conscientiousness.PC5 mainly captures the variables fantasy, aesthetics, feelings, ideas, actions and values, traits often referred to as openness. Altogether, it seems that my component structure replicates the findings of the Big-5 / OCEAN personality traits model, which is a well-accepted model for assessing personality in modern psychology research.
+
+```{r, echo = FALSE}
+# show Loadings
+round(pca_result$rotation[,1:5], 3)
+
+# bi-plot (first two principal components)
+par(mfrow=c(1,1))
+biplot(pca_result, scale=0 , cex=.5) #cex to change fond of the figure
+
+# use varimax rotation
+unrot2 = round(pca_result$rotation[,1:5], 6)
+varimax2 <- varimax(pca_result$rotation[,1:5])
+varimax2
+```
+
+
+
+
+## Question B4
+
+As previously described I ran varimax rotation on the PCA loading matrix. This rotated matrix shows show the original variables load on the newly derived components. V1 to V7 especially load negatively on PC1 (neuroticism) with loadings of -0.438, -0.324, -0.413, -0.391, -0.220, and -0.337 respectively. This suggests that the original variables share a lot of variation and might be influenced by the same underlying construct. One can clearly see how there are 5 loading clusters on the respective principal components when looking at the varimax - rotated loading matrix.
+
+It is possible to group the participants based on their personalities. To achieve this goal one can one clustering algorithms to organize a set of objects into groups in such a way that objects in the same group (cluster) are more similar to each other than to those in other groups.
+
+
+## Question B5
+
+There are different clustering algorithms available to reach the goal of grouping the participants based on their personality profiles. Two prominent techniques are k-means clustering and hierarchical clustering. K-means might be efficient because it works well with a large number of observations, which is the case in our sample. It also works well with PCA-reduced data as PCA often normalizes the scale of the variables, which is beneficial since K-means uses Euclidean distance as a metric. K-means also lets us choose the number of mutually exclusive clusters. Therefore, we can look at the data and see which number of clusters makes sense by both looking at statistical properties as well as domain knowledge considerations.
+
+Hierarchical clustering, on the other hand, creates a tree of clusters and does not require the number of clusters to be specified a priori. This technique might be suitable when our aim is to build a taxonomy of personality types. We can then see how the clusters emerged and how the taxonomy is represented by looking at the dendogram of clustering steps. Hierarchical clustering does also not require pre-specification of the number of clusters, which can be advantageous if the number of natural groupings is unknown, like in our case. However, one has to keep in mind that we have 1000 students / observations in the present case, and therefore it might be hard to extract a structure / taxonomy from the dendogram. It might even be impossile to visually plot the dendrogramm. It might therefore be reasonable to run both clustering algorithms and see if they arrive at similar results for the clustering.
+
+
+## Question B6
+
+To see if there are distinct personality profiles in the data I ran the K-means clustering algorithm. The goal is to see how the new variables cluster in the reduced feature space, therefore looking at the scores of the PCA. To choose an appropriate k (number of clusters) I used the Elbow method which involves plotting the within-cluster sum of squares (WSS) against the number of clusters and picking the k at which the WSS starts to diminish at a slower rate (see plot). I also looked at the scree-plot of the clusters plotted against the first two PC's which explain most of the variance and can still be visualized in 2D space. The elbow method suggests to take 3 clusters into account. However, when looking at the scree-plot 3 clusters still seperate the profiles precisely without any overlap. When trying k = 4 there is substantial overlap between the clusters, which is why I decided to go for 3 clusters / personality profiles (see scree plot).
+
+
+
+```{r, echo = FALSE}
+# Get the scores (principal component scores)
+scores <- pca_result$x
+
+# Elbow Method for determining the optimal number of clusters
+wss <- (nrow(scores) - 1) * sum(apply(scores, 2, var))
+for (i in 2:15) {
+  set.seed(123)
+  wss[i] <- sum(kmeans(scores[, 1:5], centers = i)$withinss)
+}
+plot(1:15, wss, type = "b", xlab = "Number of Clusters", ylab = "Within groups sum of squares")
+
+```
+```{r, include = FALSE}
+# K-means clustering on the first five principal components
+set.seed(4065018)
+kmeans_result <- kmeans(scores[, 1:5], centers = 3)  # adjust centers based on the elbow plot
+
+# Adding cluster membership to the original data
+data_US$cluster_km <- kmeans_result$cluster
+
+# Viewing the distribution of data across clusters
+table(data_US$cluster_km)
+
+# Analyze cluster centroids
+aggregate(scores[, 1:5], by = list(data_US$cluster), FUN = mean)
+```
+
+```{r, echo = FALSE}
+
+# Plot using ggplot2
+ggplot(data_US, aes(x = scores[,1], y = scores[,2], color = as.factor(cluster_km))) +
+  geom_point(alpha = 0.5) +
+  scale_color_brewer(type = 'qual', palette = "Dark2") +
+  labs(x = "Principal Component 1 (PC1)", y = "Principal Component 2 (PC2)", color = "Cluster") +
+  ggtitle("PCA (5 components retained) and K-means Clustering (3 clusters)") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+```
+
+
+```{r, echo = FALSE}
+#labels PC
+labs <- c('PC1', 'PC2', 'PC3', 'PC4', 'PC5')
+
+# PCA scores
+scores <- as.data.frame(pca_result$x[, 1:5])
+
+set.seed(4036018)
+random_indices <- sample(nrow(scores), 30)
+sampled_scores <- scores[random_indices, ]
+
+data.dist <- dist(scores)
+
+# Complete linkage
+data_clust_complete <- hclust(data.dist, method="complete") # calculate clusters 
+dend_complete <- as.dendrogram(data_clust_complete)
+
+
+# Average linkage
+dat.clust <- hclust(data.dist, method="average") # calculate clusters 
+dend_avg <- as.dendrogram(dat.clust)
+
+
+
+# Single linkage
+dat.clust <- hclust(data.dist, method="single") # calculate clusters 
+dend_single <- as.dendrogram(dat.clust)
+
+hclust_cut = cutree(data_clust_complete, h=13)
+#hclust_average_cut
+
+# Adding cluster membership to the original data 
+data_US$cluster_hc <- hclust_cut
+
+# Viewing the distribution of data across clusters
+table(data_US$cluster_hc)
+```
+
+Then I can hierarchical clustering using a euclidean distance matrix between the observations in the PCA score matrix with the derived 5 PC's. The clustering tree progressed according to complete linkage. It is almost impossible to derive a precise personality taxonomy when looking at the dendogramm with 1000 observations. However, one can clearly see that there is an emerging cluster strutcure when the tree progresses. At first sight I decided to take a cut off point at 5 clusters as this seems to be a meaningful separation point to differentiate between the underlying subclusters. However, as one could also go for a cutoff point at 3 clusters, as this would still catch the variation in the personality types, and would match with the results of k-means clustering. 
+
+
+```{r, echo = FALSE}
+#plot dendograms
+plot(dend_complete)
+title(main = 'Complete Linkage')
+abline(h=13, col="red") 
+```
+
+```{r, include = FALSE}
+#plot dendograms
+plot(dend_avg)
+title(main = 'Average Linkage')
+```
+
+```{r, include = FALSE}
+#plot dendograms
+plot(dend_single)
+title(main = 'Single Linkage')
+
+```
+
+## Question B7
+
+When looking at cluster assignments from k-means clustering, group 1 consists of 284 subjects, group 2 of 390 subjects, and group 3 of 326 subjects. When running hierarchical clustering, group 1 consists of 198 subjects, group 2 of 487 subjects, and group 3 of 315 subjects. 
+
+
+## Question B8
+
+While k-means and hierarchical clustering both assigned an almost equal amount of subjects to group 3, they differ in the assignments for group 1 and 2. K-means allocated more subjects to cluster 1, whereas hierarchical clustering allocated more subjects to cluster 2. As previously described, hierarchical clustering (HC) might yield different results when cutting the dendroramm at 5 clusters, probably resulting in a more nuanced separation of cluster 3.
+
+
+## Question B9
+
+```{r, include = FALSE}
+# Adding cluster membership to the PCA scores
+scores$cluster_km <- kmeans_result$cluster
+
+
+#group 1
+cluster1 <- filter(scores, cluster_km == 1)
+
+#group 2
+cluster2 <- filter(scores, cluster_km == 2)
+
+#group 3
+cluster3 <- filter(scores, cluster_km == 3)
+```
+
+To investigate the differences in personality between the clusters, I looked at the PCA scores in the newly derived coordinate system spanned by the several prinicipal components. We saw earlier by looking at the loadings of the original variables that these components capture different aspects of personality, also described as the big 5. I computed the mean for each cluster on the components / personality clusters to see if there are differences between groups (see plot). Whereas there are no differences between groups for agreeableness (PC1), conscientiousness (PC4), and openness (PC5), one can clearly see that groups differ in neuroticism (PC1), and extraversion (PC2). Group 2 shows very high neuroticism scores, whereas group 1 and 3 show rather low scores (original variables where already standardized to enable comparisons). Group 1 shows comparatively high extraversion scores, whereas group 2 shows very average scores, and group 3 is rather introverted compared to the other groups.
+
+```{r, echo = FALSE, warning = FALSE}
+
+
+# Rename columns
+scores_BIG5 <- scores %>%
+  rename(
+    `neuroticism (PC1)` = PC1,
+    `extraversion (PC2)` = PC2,
+    `agreeableness (PC3)` = PC3,
+    `conscientiousness (PC4)` = PC4,
+    `openness (PC5)` = PC5
+  )
+
+# Calculate means of original variables for each cluster
+cluster_means <- scores_BIG5 %>%
+  group_by(cluster_km) %>%
+  summarise(across(everything(), mean, na.rm = TRUE))
+
+cluster_means <- as.data.frame(cluster_means)
+
+# View the means to compare clusters
+print(cluster_means)
+
+```
+
