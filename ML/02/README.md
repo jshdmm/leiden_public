@@ -1,12 +1,10 @@
-# 💡 Project Overview: Predicting Depression Severity — GAM vs. Gradient Boosting vs. Regression Trees
+# 💡 Project Overview: Predicting Depression Severity with GAM, Gradient Boosting & Regression Trees
 
-This repository contains my second individual assignment for the **Statistical Learning** course of the Master's programme in Statistics & Data Science (Leiden University). The task: predict the **severity of depressive symptoms after 12 months** (`dep_sev_fu`) for patients with depression and/or anxiety disorders from a large epidemiological dataset of biopsychosocial predictors. Three supervised methods of increasing flexibility and decreasing interpretability are compared — a **single (pruned) regression tree**, a **Generalized Additive Model (GAM)**, and a **Gradient Boosting Machine (GBM)** — and the fitted models are then used for a concrete clinical decision: should a new patient ("David") be referred to an intensive depression treatment program?
+This repository contains my second individual assignment for the **Statistical Learning** course of the Master's programme in Statistics & Data Science (Leiden University). The task: predict the **severity of depressive symptoms after 12 months** (`dep_sev_fu`) for patients with depression and/or anxiety disorders from a large epidemiological dataset of biopsychosocial predictors. Three supervised methods of increasing flexibility and decreasing interpretability are compared: a **single (pruned) regression tree**, a **Generalized Additive Model (GAM)**, and a **Gradient Boosting Machine (GBM)**. The fitted models are then used for a concrete clinical decision: should a new patient ("David") be referred to an intensive depression treatment program?
 
-> **Assignment:** *Statistical Learning — Individual Assignment 2* —
+> **Assignment:** *Statistical Learning, Individual Assignment 2*,
 > submitted May 2024. Full write-up in
 > [stat_learning_ind_assignment_02_JD.pdf](stat_learning_ind_assignment_02_JD.pdf).
-
----
 
 <br>
 
@@ -26,21 +24,21 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 ## Generalized Additive Model (GAM)
 
 - Smoothing splines for all continuous predictors, parametric terms for all categorical ones (`mgcv`)
-- Smoothness (effective df) selected automatically via **GCV / REML** — no manual knot tuning
+- Smoothness (effective df) selected automatically via **GCV / REML**, so no manual knot tuning is needed
 - Keeps the additive structure of a linear model: each (possibly non-linear) effect remains separately interpretable
 
 ## Gradient Boosting Machine (GBM)
 
 - Sequential ensemble of small trees, each fitted to the residuals of its predecessors
-- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate {0.1, 0.01, 0.001}, trees {10–2,500}, and interaction depth 1–4
+- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees $\in \{10, \dots, 2500\}$, and interaction depth 1–4
 - **Selected model: 1,000 trees, shrinkage 0.01, interaction depth 2**, min. 10 obs. per leaf
 - Variable importance via normalized total gain; effect shapes via **partial dependence plots**
 
 ## Single (pruned) regression tree
 
 - Fully grown CART (`tree`), then cost-complexity **pruning via cross-validation**
-- Optimal subtree: **6 terminal splits** (cost-complexity k ≈ 323.2)
-- Maximally interpretable — the whole decision process fits in one plot — at the price of predictive power
+- Optimal subtree: **6 terminal splits** (cost-complexity $k \approx 323.2$)
+- Maximally interpretable, since the whole decision process fits in one plot, at the price of predictive power
 
 <br>
 
@@ -48,17 +46,17 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 
 **Test-set performance (500 held-out patients):**
 
-| Model | Test MSE | Test R² |
+| Model | Test MSE | Test $R^2$ |
 |---|---|---|
 | **GAM** | **18.26** | **26.4%** |
 | GBM | 18.41 | 25.7% |
 | Single pruned tree | 22.34 | 9.9% |
 
-1. **GAM and GBM are statistically indistinguishable** — the bootstrapped 95% CI for their MSE difference, [-0.76, 0.42], contains zero — while both clearly beat the single tree (CIs [-5.80, -2.30] and [-5.45, -2.48] exclude zero)
-2. **The same predictors dominate across all three model families:** baseline IDS score (31.3% relative influence in the GBM), age at disorder onset, disorder type (comorbid > depressive > anxiety), and antidepressant use — a reassuring sign the signal is real, not model-specific
+1. **GAM and GBM are statistically indistinguishable**: the bootstrapped 95% CI for their MSE difference, $[-0.76,\ 0.42]$, contains zero, while both clearly beat the single tree (CIs $[-5.80,\ -2.30]$ and $[-5.45,\ -2.48]$ exclude zero)
+2. **The same predictors dominate across all three model families:** baseline IDS score (31.3% relative influence in the GBM), age at disorder onset, disorder type (comorbid > depressive > anxiety), and antidepressant use. This is a reassuring sign that the signal is real, not model-specific
 3. Effect shapes are clinically plausible: higher baseline IDS (especially > 16) and earlier disorder onset predict worse 12-month outcomes; antidepressant use and psychological treatment are associated with lower follow-up severity
 
-**The clinical decision:** for patient David, the GAM predicts a 12-month severity of **17.7** (95% interval 16.3–19.1), the GBM **17.4** (9.3–25.5), and the single tree **13.0** (3.8–22.3). Two of three models — including the two best-performing ones — put him above the referral threshold, so the recommendation is to **refer David to the intensive treatment program**, while acknowledging the substantial uncertainty in the tree-based intervals.
+**The clinical decision:** for patient David, the GAM predicts a 12-month severity of **17.7** (95% interval 16.3–19.1), the GBM **17.4** (9.3–25.5), and the single tree **13.0** (3.8–22.3). Two of three models, including the two best-performing ones, put him above the referral threshold. The recommendation is therefore to **refer David to the intensive treatment program**, while acknowledging the substantial uncertainty in the tree-based intervals.
 
 <br>
 <br>
@@ -76,16 +74,16 @@ The GAM fits a separate smoothing spline per continuous predictor, so the shape 
 </p>
 
 **Results:**
-- **Age at disorder onset (AO)** shows the strongest association (F = 49.8, p < .00001): the later the disorder first appeared, the lower the follow-up severity — and the effect is close to linear (edf ≈ 1)
-- **Baseline IDS score** is strongly predictive (F ≈ 15) and clearly **non-linear** (edf ≈ 2), justifying the move beyond a plain linear model
-- **% time symptomatic in the past 4 years (LCImax)** adds a modest, near-linear positive effect (F = 15.0, p < .001)
-- Among the parametric terms: disorder type matters (F = 12.2, p < .0001; comorbid > depressive > anxiety), and both **antidepressant use** (F = 25.9) and **psychological treatment** (F = 15.4) are associated with *lower* follow-up severity
+- **Age at disorder onset (AO)** shows the strongest association ($F = 49.8$, $p < .00001$): the later the disorder first appeared, the lower the follow-up severity. The effect is close to linear ($\text{edf} \approx 1$)
+- **Baseline IDS score** is strongly predictive ($F \approx 15$) and clearly **non-linear** ($\text{edf} \approx 2$), justifying the move beyond a plain linear model
+- **% time symptomatic in the past 4 years (LCImax)** adds a modest, near-linear positive effect ($F = 15.0$, $p < .001$)
+- Among the parametric terms: disorder type matters ($F = 12.2$, $p < .0001$; comorbid > depressive > anxiety), and both **antidepressant use** ($F = 25.9$) and **psychological treatment** ($F = 15.4$) are associated with *lower* follow-up severity
 
 <br>
 
 ## GBM: hyperparameter tuning
 
-The tuning grid crossed learning rate {0.1, 0.01, 0.001} × number of trees {10–2,500} × interaction depth 1–4, evaluated by 10-fold cross-validated RMSE.
+The tuning grid crossed learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees from 10 to 2,500, and interaction depth 1–4, evaluated by 10-fold cross-validated RMSE.
 
 <p align="center">
   <img src="img/gbm_tuning.png" width="700">
@@ -95,7 +93,7 @@ The tuning grid crossed learning rate {0.1, 0.01, 0.001} × number of trees {10�
 
 **Results:**
 - The classic boosting trade-off is visible: the aggressive learning rate (0.1) overfits as trees accumulate, while the very conservative one (0.001) needs far more than 2,500 trees to converge
-- **Shrinkage 0.01 with 1,000 trees and depth-2 trees** hits the sweet spot — shallow interactions are enough for this data; deeper trees add variance, not signal
+- **Shrinkage 0.01 with 1,000 trees and depth-2 trees** hits the sweet spot. Shallow interactions are enough for this data; deeper trees add variance, not signal
 
 <br>
 
@@ -113,9 +111,9 @@ Variable importance aggregates each feature's loss reduction over every split it
 
 **Results:**
 - **IDS dominates with 31.3% relative influence**, followed by age at onset (16.0%) and disorder type (12.7%)
-- The IDS partial dependence rises steeply **above a score of ~16** — baseline symptom load is not just predictive but predictive in an accelerating way
+- The IDS partial dependence rises steeply **above a score of ~16**: baseline symptom load is not just predictive, but predictive in an accelerating way
 - Age at onset shows a monotone negative effect: early-onset patients face systematically worse 12-month outcomes
-- Comorbid and depressive disorders predict higher severity than pure anxiety disorders — mirroring the GAM's parametric estimates
+- Comorbid and depressive disorders predict higher severity than pure anxiety disorders, mirroring the GAM's parametric estimates
 
 <br>
 
@@ -148,12 +146,12 @@ Pairwise MSE differences on the test set were bootstrapped (1,000 resamples, per
 
 | Comparison | 95% CI of MSE difference | Verdict |
 |---|---|---|
-| GAM − GBM | [-0.76, 0.42] | no reliable difference |
-| GAM − tree | [-5.80, -2.30] | GAM clearly better |
-| GBM − tree | [-5.45, -2.48] | GBM clearly better |
+| GAM − GBM | $[-0.76,\ 0.42]$ | no reliable difference |
+| GAM − tree | $[-5.80,\ -2.30]$ | GAM clearly better |
+| GBM − tree | $[-5.45,\ -2.48]$ | GBM clearly better |
 
 **Results:**
-- The GAM's nominal lead over the GBM (MSE 18.26 vs. 18.41) is **not statistically distinguishable** — the interval comfortably contains zero
+- The GAM's nominal lead over the GBM (MSE 18.26 vs. 18.41) is **not statistically distinguishable**: the interval comfortably contains zero
 - Both flexible models beat the single tree by an amount that survives resampling uncertainty
 
 <br>
@@ -162,14 +160,14 @@ Pairwise MSE differences on the test set were bootstrapped (1,000 resamples, per
 
 | Model | Point prediction | 95% prediction interval |
 |---|---|---|
-| GAM | 17.7 | (16.3, 19.1) |
-| GBM | 17.4 | (9.3, 25.5) |
-| Single tree | 13.0 | (3.8, 22.3) |
+| GAM | 17.7 | $(16.3,\ 19.1)$ |
+| GBM | 17.4 | $(9.3,\ 25.5)$ |
+| Single tree | 13.0 | $(3.8,\ 22.3)$ |
 
 **Results:**
-- The GAM — the best-calibrated model — places David's interval almost entirely **above** the referral threshold
+- The GAM, the best-calibrated model, places David's interval almost entirely **above** the referral threshold
 - The tree-based intervals are wide enough to span both decisions, reflecting those models' higher predictive variance
-- Weighting models by their test performance, the recommendation is **referral**, communicated with explicit uncertainty — the point predictions alone would have overstated the confidence of that call
+- Weighting models by their test performance, the recommendation is **referral**, communicated with explicit uncertainty. The point predictions alone would have overstated the confidence of that call
 
 <br>
 
@@ -196,13 +194,13 @@ install.packages(c("mgcv", "caret", "gbm", "tree"))
 rmarkdown::render("stat_learn_ind_assignment_02_JD.Rmd")
 ```
 
-All fits use `set.seed(4036018)`; the train/test split samples 500 test observations from the 1,500 patients. Note the GBM grid search (10-fold CV × 60 parameter combinations) takes a while.
+All fits use `set.seed(4036018)`; the train/test split samples 500 test observations from the 1,500 patients. Note that the GBM grid search (10-fold CV × 60 parameter combinations) takes a while.
 
 <br>
 
 # 💡 What can we take away from this?
 
-Model choice here is a trade-off between interpretability and accuracy — but the trade-off is not linear. The single tree gives up 16 percentage points of explained variance for its readability, while the GAM matches the boosted ensemble's accuracy *and* keeps every effect individually interpretable, making it arguably the best of both worlds for clinical communication. Equally important, uncertainty quantification changed the story: point predictions alone suggested a confident referral, but the bootstrap and prediction intervals revealed how much that confidence should be tempered. In applied prediction — especially in medicine — reporting the interval is as important as reporting the estimate.
+Model choice here is a trade-off between interpretability and accuracy, but the trade-off is not linear. The single tree gives up 16 percentage points of explained variance for its readability, while the GAM matches the boosted ensemble's accuracy *and* keeps every effect individually interpretable, making it arguably the best of both worlds for clinical communication. Equally important, uncertainty quantification changed the story: point predictions alone suggested a confident referral, but the bootstrap and prediction intervals revealed how much that confidence should be tempered. In applied prediction, and especially in medicine, reporting the interval is as important as reporting the estimate.
 
 <br>
 
