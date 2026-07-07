@@ -15,6 +15,6 @@ A selection of projects from my master's in Statistics and Data Science at Leide
 
 <br>
 
-## [Project 3](https://github.com/jshdmm/leiden_public/tree/main/ML/03): Causal Inference
+## [Project 3](https://github.com/jshdmm/leiden_public/tree/main/causal_inference): Causal Inference
 
 
