@@ -1,0 +1,133 @@
+---
+title: "2025S2 CI-GroupAssignment-report"
+author: "ML Abrahams"
+date: "2025-03-17"
+output: pdf_document
+---
+```{r}
+#setwd("C:\\Users\\leoni\\OneDrive\\Bureaublad\\ACADEMIA\\Statistics & Data Science MSc\\CAUSAL INFERENCE 1\\Group assignment")
+data = read.csv("2025_framingham_assignment.csv")
+library(ggplot2)
+library(car)
+```
+#1: Data preperation
+ADJUST DATASET TO SELECTED VARIABLES BY DAG
+```{r data-preparation}
+# Set SEX to binary variable with 0 (male) and 1 (female)
+data$SEX = ifelse(data$SEX == 1, 0, 1)
+
+# Get columns specific for answering our research questions
+data = data[,c(2:3,5:11,14,16)]
+
+# Identify NA's
+getNA = function(data) {
+  sum(is.na(data))
+}
+
+NA.total = apply(data, 2, getNA)
+NA.total # 113 NA in EDUC variable
+
+# Exclude entries where EDUC is NA
+removeNA = function(data) {
+  if(is.na(data[8]) == FALSE) {
+    keep = data
+  }
+}
+
+data.noNA = data[!is.na(data$EDUC),]
+
+# Check again for NA distribution
+NA.total.1 = apply(data.noNA, 2, getNA)
+NA.total.1
+```
+#2: Fit outcome regression model
+ADJUST MODEL BASED ON THE RIGHT VARIABLES
+```{r fit-outcome-regression}
+# Fit outcome regression models on data set with all variables including interactions between all variables and EDUC
+# AND na.exclude
+outcome.model = glm(STROKE ~
+                      SEX * EDUC +
+                      AGE * EDUC +
+                      DIABP * EDUC +
+                      BPMEDS * EDUC +
+                      CURSMOKE * EDUC +
+                      DIABETES * EDUC +
+                      BMI * EDUC +
+                      HEARTRTE * EDUC +
+                      HYPERTEN * EDUC, 
+                    data = data.noNA, 
+                    family = binomial, 
+                    na.action = na.exclude)
+
+summary(outcome.model)
+```
+# 3: Find ATE
+```{r find-ATE}
+# Duplicate data sets to two sets with different exposure levels and predict individual E(Y = y)
+## Set all to exposure 1 (EDUC == 1)
+data.1 = data.noNA
+data.1$EDUC = 1 # high education
+
+## Set data set to exposure 0 (EDUC == 0)
+data.0 = data.noNA
+data.0$EDUC = 0 # low education
+
+# Get predicted values for E(Y = y | X = x) based on outcome regression model
+getPred = function(dataset) {
+  pred = predict(outcome.model, dataset, type = "response")
+  out = mean(pred, na.rm = TRUE)
+  return(out)
+}
+
+# Predict values E(Y = y | X = 1) based on outcome regression model
+EY1 = getPred(data.1)
+
+# Predict values E(Y = y | X = 0) based on outcome regression model
+EY0 = getPred(data.0)
+
+# Find average treatment effect (effect of Education on stroke)
+ATE = EY1 - EY0 #ATE = -.01 > people with a higher education have 1% less change of developing a stroke
+c(ATE, EY1, EY0)
+
+# Standardization using stdGlm
+library(stdReg)
+fit.std = stdGlm(fit = outcome.model, data = data.noNA, X = "EDUC")
+summary(fit.std, contrast = "difference", reference = 0)
+```
+#4: Assumptions
+##4.1: For CI
+
+##4.2: Outcome regression model
+For logistic regression, there is no assumption on the error terms. The assumtptions that are made though are:
+
+* Linearity of the log-odds (independent and log-odds are linear)
+* Independent observations (assumed by the dataset, no further testing)
+* No perfect multicollinearity
+* Correct specification
+
+The error terms do show a specific patterns, which is additionally clustered per outcome value. This indicates a misspecification of the model (missing variable or interaction). The model does not depend on these error terms, but there might be something wrong with the model. 
+```{r testing-assumptions}
+# Conditional exchangeablility
+
+# Positivity
+
+# Consistency
+
+# OUTCOME REGRESSION MODEL SPECIFIC
+## Linearity in log odds (dependent and independent variables)
+##
+
+## High influential points
+vif(outcome.model)
+
+## Homoscedasticity of error terms 
+fitted_vals = fitted(outcome.model)    # Extract fitted values
+residuals_vals = residuals(outcome.model)  # Extract residuals
+
+plot(fitted_vals, residuals_vals, 
+     col = ifelse(data.noNA$STROKE == 1, "blue", "red"),
+     pch = 16, 
+     xlab = "Fitted Values", 
+     ylab = "Residuals",
+     main = "Residual Plot Colored by Outcome (0 = Red, 1 = Blue)")
+```

@@ -1,0 +1,109 @@
+---
+title: "06_missingness"
+author: "Joshua Damm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(mice)
+```
+
+```{r}
+
+## Load and inspect data
+df_fram = read.csv("2025_framingham_assignment.csv")
+
+df_fram$SEX = ifelse(df_fram$SEX == 1, 0, 1)
+
+df_select = df_fram %>% 
+            select(SEX, AGE, BPMEDS, CURSMOKE, DIABETES, EDUC, STROKE, BMI, HYPERTEN)
+
+```
+
+```{r}
+# complete case analysis (for now)
+df_nona = na.omit(df_select)
+```
+
+# Methods
+
+Before the missing data mechanism is analyzed accordingly, descriptive statistics for complete cases were computed for the exposure (EDUC), the mediators (BMI, BPMEDS, HYPERTEN, DIABETES, and CURSMOKE). Moreover, the frequency of missing values was computed for every covariate of interested. Missing data patterns were investigated in order to analyse potential missingness mechanisms. Furthermore, we ran logistic regression to model $P(\text{EDUC missing}_i = 1 \mid \text{Covariates})$ in order to investigate if our pre-specified covariates of interest predict the probability of EDUC missing. This provides insight if the missingness mechanism might be at random (MAR), i.e. it is influenced by the observed covariates.
+
+
+
+
+# 2 Results
+
+2.1 Descripitive statistics
+
+```{r}
+# explore data and missing data patterns
+str(df_select)
+summary(df_select)
+```
+
+Descriptive statistical analysis showed that the genders were roughly equally distributed, although females (56%) were slightly overrepresented in the current sample. From the all available information it can be concluded that 28.19% of the participants (mean age = 49.93) obtained a high education status according to the previously assumed criteria. 0.09% of participants reported an occurence of a stroke within the 24-year time interval of investigation. 49.19%, so roughly half of the participants reported active current smoking status, and 73.34% reported having hypertension according to the pre-defined criteria. The BMI was reported as 25.85 on average. Crucially, only 0.03% of participants reported taking blood pressure medication and having diabetes respectively. These numbers should be taken into account as these variables are crucial mediators in our DAG, and such low prevalences might complicate the calculation of the causal contrast of interest (see discussion).
+
+
+2.2 Missing data mechanism
+
+2.2.1 Descriptive missingness pattern
+
+```{r}
+md.pattern(df_select)
+```
+
+The frequency of missing values for every covariate of interest in the analysis is displayed in figure X. Out of $N_T$ = 4434 participants, $N_C$ = 4242 complete cases were observed in the sample, i.e. participants which display available information on all covariates of interest. This shows that for $N_M$ = 192 participants, data is missing on at least one covariate of interest. However, for the outcome STROKE all cases are complete, and so are all cases for the mediators CURSMOKE and HYPERTEN, as well as for the confounders AGE and SEX. For the mediator BPMEDS 61 observations are missing, and so are 19 observations for the mediator BMI. Crucially, for the exposure EDUC a total of 113 missing observations were observed.
+
+
+```{r}
+# Look only at the 113 participants for which education has not been observed
+df_educ_mis = df_select %>% 
+            filter(is.na(EDUC))
+
+df_educ_complete = df_select %>% 
+            filter(!is.na(EDUC))
+
+# Look if covariates deviate in their distribution between participants with complete and missing education status
+summary(df_educ_mis)
+summary(df_educ_complete)
+```
+When investigating participants for which education status was not observed, descriptively, there seems to be no deviation between the participants for which education status has been observed and those for which it was not observed. 
+
+
+2.2.2 Logistic regression to investigate MAR
+
+```{r}
+# create missingness indicator
+df_select <- df_select %>%
+  mutate(EDUC_missing = ifelse(is.na(EDUC), 1, 0))
+```
+
+```{r}
+# run logistic regression
+model.1 <- glm(EDUC_missing ~ SEX + AGE + HYPERTEN + BPMEDS + BMI + CURSMOKE + DIABETES + STROKE, data = df_select, family = binomial)
+summary(model.1)
+```
+```{r}
+# Perform a two-sample t-test to see if BMI sig. differs between observed and unobserved education status groups
+t.test(BMI ~ EDUC_missing, data = df_select)
+```
+
+
+Logistic regression with all covariates of interest predicting the log-odds of missing showed that BMI significantly increased the probability of education being missing (OR ≈ 1.06). A two-sample t-test showed that BMI is significantly different between groups of observed and unobserved education status (t (117.01 = - 2.78, p < 0.01). Practially, although BMI is statistically associated with missingness in education, the effect is very small and the average BMI differs by just ~1 unit between complete and missing cases for education status. Both groups would still be classified as overweight according to BMI classification criteria (BMI > 25), and given the BMI measurement range this difference is practically negligible. Therefore, while this technically violates MCAR, the violation is minor and likely not practically important. Furthermore, since all other covariates were almost identically distributed between groups, we do not assume external unobserved covariates influecing the missingness mechanism. For many purposes, the data may be treated as MCAR or MAR with minimal bias risk given the empirical evidence collected, although MNAR can not be ruled out completely.
+
+
+
+# Discussion
+
+- Participants overweight (BMI > 25)
+- low occurences / frequencies of crucial mediators, BPMEDS and DIABETES only 0.03%.
+- Only 28% high education status
+
+

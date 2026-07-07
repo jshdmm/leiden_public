@@ -1,0 +1,182 @@
+---
+title: "CI_DAG"
+author: "Joshua Damm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dagitty)
+library(dplyr)
+```
+
+1.  Methods (Assuming causal DAG)
+
+1.1 DAG assumptions
+
+The aim of this study is to find the causal effect of an exposure (education) on our outcome of interest (stroke risk). Our goal is to estimate the causal effect of interest from the observed data, given our causal assumptions. Therefore, we start by establishing an observational Directed Acyclic Graph (DAG) representing our causal assumptions. We want to find an identified effect, i.e. a causal effect that can be estimated from the observed data, after appropriate adjustment for confounding and other biases. It is a "properly adjusted association" that equals the true causal effect under our assumed causal model (DAG).
+
+The assumed causal relationship from education (EDUC) to the risk of stroke (STROKE) in our DAG is modelled by a series of mediators and confounders (see Figure X). These assumptions have been made by a mixture of subjective expert opinion and literature research. First, blood pressure medication (BPMEDS), and Body Mass Index (BMI) are thought to causally affect Hypertension status (HYPERTEN), which is then causally affecting stroke risk (STROKE).
+Highly educated people are more likely to follow advice from medical authorities and take blood pressure medication according to its prescription, which is then in turn thought to decrease hypertension. Furthermore, highly educated people are more likely to have an active healthy lifestyle, or at least know about factors that are negatively affecting their health. This is also assumed to be true for nutrition and exercising, which is why highly educated people are assumed to have a lower BMI. A lower BMI is decreasing hypertension according to previous research. Moreover, previous research linked increased hypertension to a risk of stroke, which is also true the effect of having diabetes (DIABETES) on stroke risk. Lastly, higher educated people are also thought to know about the negative effects of smoking for the overall health. Moreover, we assume that higher education also leads to a higher income and a more attractive lifestyle, which makes the occurance of smoking as a coping mechanism for bad life circumstances less likely. Therefore, we assume that high education is decreasing the risk of smoking addiction. The negative causal effect of current smoking status (CURSMOKE) on the risk of stroke is well established in the literature.
+
+Besides these mediators of the causal effect, age and sex were thought to act as exogenous... 
+
+
+
+
+`Elaborate on why we assume causal relationships, thoughts, papers?`
+
+```{r}
+DAG = dagitty('dag {
+AGE [pos="-1.092,-0.487"]
+BMI [pos="0.038,-0.410"]
+BPMEDS [pos="0.554,-0.670"]
+CURSMOKE [pos="-1.759,-0.337"]
+DIABETES [pos="-0.826,-0.077"]
+EDUC [exposure,pos="-0.379,-1.113"]
+HYPERTEN [pos="0.230,0.308"]
+SEX [pos="-0.421,-0.265"]
+STROKE [outcome,pos="-0.687,0.698"]
+AGE -> DIABETES
+AGE -> HYPERTEN
+AGE -> STROKE
+AGE -> EDUC
+BMI -> HYPERTEN
+BPMEDS -> HYPERTEN
+CURSMOKE -> STROKE
+DIABETES -> STROKE
+EDUC -> BMI
+EDUC -> BPMEDS
+EDUC -> CURSMOKE
+EDUC -> DIABETES
+HYPERTEN -> STROKE
+SEX -> BMI
+SEX -> STROKE
+SEX -> HYPERTEN
+SEX -> EDUC
+}')
+
+plot(DAG)
+```
+
+1.2 Identification of causal effect of interest
+
+In order to make the causal effect identifiable we consider the backdoor criterion (Pearl, 2009). Descendants of the exposure are not adjusted for, because these might be part of the causal pathway from the exposure to the outcome. Rather, we want to d-seperate/block all backdoor paths between our exposure and the outcome. Backdoor paths are non-causal paths that create confounding, which we want to avoid/control for. We want to establish a set of confounders that satisfy the backdoor criterion, so that we control for these variables and as a consequence make the causal effect of interest identifiable. When the causal effect is identifiable, we can estimate the distribution of potential outcomes and estimate our causal effect.
+
+```{r}
+# direct causal paths
+paths( DAG, "EDUC", "STROKE", directed=TRUE )$paths
+```
+
+By looking at the direct paths in the DAG potential assumed causal effects of our exposure (education) on the outcome (stroke risk) can be observed. These directed paths together identify the causal effect after the adjustment of potential backdoor paths.
+
+```{r}
+adjustmentSets(DAG, exposure="EDUC", outcome="STROKE")
+```
+
+Age and sex have to be adusted for to satisfy the backdoor criterion and make the causal effect identifiable in the current DAG.
+
+2.  Testing DAG for independence
+
+We want to check if our DAG structure is consistent with the information contained in the observed data. Our goal is derive testable implications from our DAG and see if they hold up against the empirical evidence. By structuring the DAG we assume an underlying data-generating process and we use d-seperation to see if these assumptions are realistic given our data.
+
+We start by listing all the implied conditional independencies in our postulated DAG. We derive this by using the rules of d-separation. In case our observed data violates these implied conditional independencies, our DAG is misspecified.
+
+```{r}
+## List all implied conditional independencies
+impliedConditionalIndependencies(DAG)
+
+```
+
+Furthremore, we will inspect our observed data.
+
+```{r}
+
+## Load and inspect data
+df_fram = read.csv("2025_framingham_assignment.csv")
+
+df_fram$SEX = ifelse(df_fram$SEX == 1, 0, 1)
+
+df_select = df_fram %>% 
+            select(SEX, AGE, BPMEDS, CURSMOKE, DIABETES, EDUC, STROKE, BMI, HYPERTEN)
+
+```
+
+```{r}
+# complete case analysis (for now)
+df_nona = na.omit(df_select)
+```
+
+We look at the complete cases in our data by removing participants with missing data. Conditional independence equals zero partial correlation in case our variables of interest are jointly normally distributed. This is not the case for our mixed data types since we have both continuous and binary covariates, but in this course we assume that by the law of large numbers we can still use partial correlations to test for conditional independence as discussed with the lecturers. We all the implied conditional independencies by regressing each variable of interest with the conditioning variable respectively and correlate their residuals. We then test for non-zero partial correlations. We use Bonferroni-Holm to correct the p-values by controlling for the False Discovery Rate at 5%, since it assumes no independence between all the consecutive tests.
+
+```{r}
+# Test for conditional independence assuming that the variables are jointly normal, which they are not, but we use law of large numbers to still test conditional independence by testing for non-zero partial correlations in our ovserved data.
+
+## Perform local tests
+r <- localTests(DAG, df_nona)
+
+## Adjust using Holm-Bonferroni correction
+## Retain only those tests with adjusted p-value < .05
+r <- r[p.adjust(r$p.value) < 0.05, ]
+
+## Plot conditional independencies inconsistent with data
+r <- r[order(r$p.value), ]
+par(mar = c(4, 8.5, 1.5, 0.5))
+plotLocalTestResults(r, bty = "n", xlim = c(-0.4, 0.4), ylim = c(0.1, 3.1),
+                     axis.pars = list(las = 1, lty = 0))
+
+```
+
+After testing all conditional independencies and adjusting for multiple comparions, we have 3 implied conditional independencies whose empirical partial correlation is significantly non-zero. Therefore, the empirical data imply that there is a connection between BMI and current smoking status (CORSMOKE) if we control for the education level (EDUC). Furthermore, current smoking status and sex seem to be significantly associated given the education level, and so are age and smoking status.
+
+An effect of sex on the probability of smoking actively is plausible, because there is literature suggesting that men are more likely to smoke than women. An effect of age on smoking status once you control for the education makes sense since younger people might be more likely to some due to stressful life circumstances or social factors (peer-pressure, more parties, more impulsivity). The causal relationship between BMI and smoking status given education level is less obvious, but there is some evidence suggesting that smokers have a faster metabolism and less appetite which might cause a lower BMI.
+
+3.  Adjusting the DAG assumptions
+
+```{r}
+DAG = dagitty('dag {
+AGE [pos="-1.092,-0.487"]
+BMI [pos="0.038,-0.410"]
+BPMEDS [pos="0.554,-0.670"]
+CURSMOKE [pos="-1.759,-0.337"]
+DIABETES [pos="-0.826,-0.077"]
+EDUC [exposure,pos="-0.379,-1.113"]
+HYPERTEN [pos="0.230,0.308"]
+SEX [pos="-0.421,-0.265"]
+STROKE [outcome,pos="-0.687,0.698"]
+AGE -> DIABETES
+AGE -> HYPERTEN
+AGE -> STROKE
+AGE -> EDUC
+BMI -> HYPERTEN
+BPMEDS -> HYPERTEN
+CURSMOKE -> STROKE
+CURSMOKE -> BMI
+SEX -> CURSMOKE
+AGE -> CURSMOKE
+DIABETES -> STROKE
+EDUC -> BMI
+EDUC -> BPMEDS
+EDUC -> CURSMOKE
+EDUC -> DIABETES
+HYPERTEN -> STROKE
+SEX -> BMI
+SEX -> STROKE
+SEX -> HYPERTEN
+SEX -> EDUC
+}')
+
+plot(DAG)
+```
+
+Are there any additional backdoor paths in the adjusted DAG?
+
+```{r}
+adjustmentSets(DAG, exposure="EDUC", outcome="STROKE")
+```
+
+There are no additional backdoor paths in the adjusted DAG other than age and sex, which we will control for in our later causal modelling.
