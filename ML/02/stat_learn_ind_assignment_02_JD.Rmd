@@ -1,0 +1,515 @@
+---
+title: "Statistical Learning - Individual Assignment 02"
+author: "Joshua Damm"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+
+#load data
+MH_dat <- read.table("MHpredict.csv", sep = ",", header = TRUE,
+ stringsAsFactors = TRUE) 
+```
+
+# Question 1: Model selection and reasoning
+
+## 1.1 GAM
+
+One reasonable supervised learning method to predict the severity of depressive symptoms after 12 months (from now on: depressive symptoms or depression score) could be generalized additive models (GAM's). We have a continuous response, and a range of many categorical (many of them even binary) and continuous predictors. GAM's allow to model non-linear relationships for seperate predictor variables with the response, while still remaining the additivity assumption of a typical linear model, so that one can interpret each predictor's effect on the reponse seperately, while holding all other predictors constant. It is therefore possible to include different effects (both linear and non-linear) for higher predictive accuracy. Since our predictors have different scales and might have both linear and non-linear relationships with the response, it might be reasonable to fit a GAM to the data. 
+
+## 1.2 GBM
+
+Another way to predict depression score could be using regression tree ensembles. We have a large epidemiological dataset with potentially complex non-linear relationships and interactions among the (bio-)psychological predictor variables, and regression trees (continuous response) are paticularly good in dealing with this. One advantage of using tree methods is that one can infer the role of different predictors for the prediction by looking at the shape and splits of the trees that were used to terminate at a prediction for the response.
+
+Gradient Boosting Machines (GBM) are particularly suited for predicting depression score since multiple trees will be fitted sequentially on our dataset, where each new tree helps to correct errors made by previous trained trees. This additive model is expected to perform particularly well on this heterogeneous dataset and can capture its potentially complex interaction patterns. By fitting small trees, and averaging predictions over many trees, both overall bias and variance will be reduced. This process is regulated by different tuning parameters like the learning rate (or shrinkage parameter), number of trees and number of splits that allows for different shaped trees to attack the residuals. One other advantage is that by the number of splits the interaction depth from the variables predicting the response can be controlled. Clinicians could for instance infer useful information by looking at the most influencial variables that reduced the RSS among the different splits in the training process the most, to potentially derive theories or interventions.
+
+
+
+## 1.3 Single regression tree
+
+Another suitable method to predict later depression score would be to use a single (pruned) regression tree.
+Firstly, regression trees provide a straightforward and intuitive way to visualize and interpret how our biopsychological predictor variables influence the reponse The tree structure, with its branches and leaves, allows for easy understanding and communication of the model's decision process, which is particularly beneficial in a medical and psychological context where clear explanations are crucial. Secondly, regression trees can naturally handle non-linear relationships between predictors and the outcome without requiring transformation of variables. Additionally, they can capture interactions between variables, which is often essential in complex datasets. For instance, the interaction between different types of disorders and demographic factors might significantly affect depression severity, and regression trees can model these interactions effectively. Regression trees perform implicit variable selection, identifying the most relevant predictors for the outcome. This is advantageous for reducing dimensionality and focusing on the most impactful variables, which can enhance model performance and interpretability. Pruning further refines the tree by removing less significant branches, preventing overfitting and improving generalization to new data. 
+
+
+
+
+
+
+
+# Question 2: model fitting and parameter selection
+
+
+```{r, include = FALSE}
+set.seed(4036018)
+
+# Define indices for test data - sampling 500 observations for testing
+test_indices <- sample(nrow(MH_dat), 500)
+test <- MH_dat[test_indices, ]
+train <- MH_dat[-test_indices, ]
+```
+
+## 2.1. GAM
+
+```{r, include = FALSE}
+library("mgcv")
+# Define and fit the GAM model, fit cubic spines for continuous variables
+gam_model <- gam(dep_sev_fu ~ s(Age) +
+                   s(LCImax) +
+                   s(aedu, k = 8) +
+                   s(IDS) +
+                   s(BAI) +
+                   s(FQ) +
+                   s(AO) +
+                   disType +
+                   pedigree +
+                   alcohol +
+                   bTypeDep+
+                   bSocPhob +
+                   bGAD +
+                   bPanic +
+                   bAgo +
+                   Sexe +
+                   RemDis +
+                   sample +
+                   ADuse +
+                   PsychTreat,
+                 data = train, method = "REML")
+
+```
+For the GAM I used all categorical variables as parametric predictors and all continuous predictors as smoothing splines. One should use cross-validation to determine the most effective choice of degrees of freedom (df) for the smoothing splines. However, the "mgcv" package already uses generalized cross-validation (GCV) as the default method to select the amount of smoothing, which is a form of automatic smoothing parameter selection that's closely related to cross-validation. The package also provides a method to choose the model parameters according to restricted maximum likelihood estimation (REML). In this case the df are not specified, but the REML estimates the optimal value for the smoothing parameters on the cross-validated training data. So for the smoothing splines the df were chosen using GCV and REML. All categorial variables were included as factors in the model.
+
+
+## 2.2 GBM
+
+```{r, include = FALSE}
+library(caret)
+library(gbm)
+```
+
+```{r, include = FALSE}
+# Define the parameter grid
+grid <- expand.grid(shrinkage = c(0.1, 0.01, 0.001),
+                    n.trees = c(10, 100, 1000, 2000, 2500),
+                    interaction.depth = 1:4,
+                    n.minobsinnode = 10)
+```
+
+
+```{r, include = FALSE}
+# Define train control
+trControl <- trainControl(method = "cv", number = 10, verboseIter = TRUE)
+
+# Train the model using caret's train function
+set.seed(4036018)
+gbm_model <- train(dep_sev_fu ~ ., data = train, method = "gbm", tuneGrid = grid,  trControl = trControl)
+```
+
+```{r, include = FALSE}
+# Print the model summary
+print(gbm_model)
+```
+
+```{r, echo = FALSE}
+# Visualize the training results
+plot(gbm_model)
+```
+
+```{r, include = FALSE}
+# Get the best tuning parameters
+bestTune <- gbm_model$bestTune
+```
+
+```{r, include = FALSE}
+# setup data
+gbm_dat <- train
+
+# Converting logical variables to factors
+gbm_dat$RemDis <- factor(gbm_dat$RemDis, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
+
+gbm_dat$ADuse <- factor(gbm_dat$ADuse, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
+
+gbm_dat$PsychTreat <- factor(gbm_dat$PsychTreat, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
+
+# Refit the model
+set.seed(4036018)
+best_gbm <- gbm(dep_sev_fu ~ ., data = gbm_dat, 
+                distribution = "gaussian",
+                n.trees = bestTune$n.trees,
+                interaction.depth = bestTune$interaction.depth,
+                shrinkage = bestTune$shrinkage,
+                n.minobsinnode = bestTune$n.minobsinnode)
+
+```
+
+
+
+I used 10-fold cross validation to choose the hyperparameters of the gradient boosted regression model to predict depression score. I defined a grid including the different hyperparameters, i.e. the number of trees, the learning rate, and the tree depth.
+
+The number of trees parameter specifies the total number of trees to build in the sequence. Each tree is built on the residuals (errors) left by the previous trees. More trees can lead to better performance but increase the risk of overfitting. The learning rate (shrinkage parameter) used to shrink the corrections made by each tree, thereby slowing down the learning process. It is used to prevent overfitting by making the boosting process more conservative. The tree depth pecifies the maximum (interaction) depth of each tree. Deeper trees can model more complex patterns in the data. More depth allows the model to learn more detailed data specifics (for instance interaction of multiple predictors), enhancing performance on training data but can lead to overfitting. The minimum observations in Leaf Nodes controls the minimum number of samples required to be at a leaf node of a tree, which also contributes to the bias-variance trade-off.
+
+After inspected the Root Mean Squared Error (RMSE) after cross validation (see plot), a number of 1000 trees, a learning rate of 0.01, an interaction depth of 2 showed the best model performance. This minimum observations in Leaf Nodes was fixed as a value of 10 as this is conventionally a good strategic choice aimed at enhancing the model's generalizabilty and preventing overfitting.
+
+
+
+## 2.3 Single regression tree
+
+```{r, include = FALSE}
+library("tree")
+cart <-tree(dep_sev_fu~., data = train)
+summary(cart)
+```
+
+```{r, echo = FALSE}
+plot(cart);
+text(cart, pretty = 0)
+```
+
+```{r, include = FALSE}
+# use pruning for selecting tree size (find penalty parameter by using cross validation)
+set.seed(4036018)
+cv.cart <-cv.tree(cart)
+cv.cart
+
+pruned_tree <- prune.tree(cart , best = 6)
+```
+
+First I fitted a single regression tree on the training data with later depression score as the continuous response. The regression tree split the data onto different segments based on decision points (nodes). The first optimal choice of splits / nodes was based on minimizing the total residual sum of squares (RSS, also called deviance in the context of regression trees), leading to a total of 6 splits / nodes and 7 terminal nodes (i.e. end points of the tree for final predicted response values). After this I used cross validation to see if we can prune the tree (i.e. shorten the branches and nodes of the tree) to make it less complex and to introduce a little bias for the potential reduction of variance and overfitting. I investigated the cross-validated deviance as a function of cross-validated tree size and the cross-validated cost-complexity parameter (k). We want to minimize the deviance for reducing the bias, while also accounting for the variance and the risk of overfitting, thereby introducing the cost-complexity parameter k. Initially, the full-grown tree typically overfits the training data. The cost-complexity criterion introduces a penalty for the number of terminal nodes in the tree. The optimal subtree that the fewest necessary complexity while having the lowest cross-validated error (deviance), turned out to be k = 323.2192, with a tree size of 6 and a deviance of 23486.26 (see plot).
+
+
+```{r, echo = FALSE}
+# plot deviance against tree size and penalty
+par(mfrow = c(1, 2))
+plot(cv.cart$size , cv.cart$dev, type = "b", xlab = "CV tree size", ylab = "CV deviance")
+plot(cv.cart$k, cv.cart$dev, type = "b", xlab = "CV cost-complexity parameter (k)", ylab = "CV deviance")
+
+# lowest deviance at tree with 6 terminal nodes -> pruning
+```
+
+
+
+
+
+
+
+
+
+
+
+# Question 3: Interpretation of the results
+
+```{r, include = FALSE}
+# Interpret
+summary(gam_model)
+anova(gam_model)
+```
+
+## 3.1 GAM
+
+The model showed that the type of disorder matters (F = 12.156, p < .0001). Having a depressive disorder is predictive, and having a comorbid disorder is even higher predictive of depression score than having only an anxiety disorder. Comorbidity matters a lot, since having a social phobia seems is negatively associated with depression score (F = 4.037, p < .05), whereas having a general anxiety disorder is positively associated (F = 10.091, p < .01) with the response. While having a panic disorder is not related to the response, having an agoraphobia is negatively associated with depression score (F = 5.986, p < .05). Taking antidepressive medication (F = 25.911, p < .00001) and receiving psychological treatment is both negatively associated with depression score (F = 15.373, p < .00001).
+
+Furthermore, when looking at the smoothing spline plots visually, the percentage of time of present symptoms in the past 4 years seems to have a slightly positive association with depression score (F = 14.954, p < 0.001), while the age of disorder onset has a rather strongly negative associaton with the response (F = 49.782, p < 0.00001). While the former two effects are rather linear (edf value close to 1), the test score on the inventory of depressive symptomatology has a strong rather non-linear relationship with the reponse (edf value close to 2). 
+
+Overall, the F-test statistic suggest that the most influential variables are the age at onset of the disorder, the test score on the inventory of depressive symptomatology, whether subject uses anti-depressant medication, whether a subject gets psychological treatment, the percentage of time of present symptoms in the past 4 years, the type of disorder, and the presence of a (comorbid) anxiety disorder, in descending order. This is an arbitrary selection, since there would be 2 more significant predictor variables with substantially lower F-values.
+
+
+```{r, echo = FALSE}
+# Visualize the fitted splines if necessary
+par(mfrow = c(2, 4))
+plot(gam_model, residuals = TRUE, col = "blue", cex = .5)
+```
+
+
+## 3.2 GBM
+
+To see which variables were most important in predicting depression score, I inspected the relative importance of variables by looking at the normalized total gains across the tree-building/learning process. Each time a feature is used in a split, the improvement to the model (measured by the reduction in the loss function, e.g. MSE) is calculated. The total gain from each feature across all splits it participates in is aggregated and can be used as a measure for variable importance. The scores are then normalized for all features so that they app to 1 or 100%.
+
+Looking at variable importance, we see that the test score of the Inventory of Depressive Symptomatology (IDS) is the most influencial variable (31.3%), followed by Age at onset of the disorder (AO) (16.04%) and Type of disorder (disType) (12.67%).
+
+```{r, include = FALSE}
+summary(best_gbm, method = relative.influence, normalize = TRUE)
+```
+
+When looking at the shape and direction of the effects of the most important variables, one can use partial dependence functions, which compute the conditional expectations for the respective predictor variables of interest by marginalizing over the observed distributions of all other predictors (see plots). The Inventory of Depressive Symptomatology (IDS) seems to have a positive association with depression score. Especially higher values from about 16 seem to be increasingly predictive of later depression score. The later one is affected by the disorder, the lower the depression score at the follow-up, as indicated by the negative association between age at onset of the disorder and the response. Comordbid and depressive disorder types are more predictive of later depression score than only having an anxiety disorder.
+
+```{r, echo = FALSE}
+# Plot for IDS
+pdp_ids <- plot(best_gbm, i = "IDS", return.grid = TRUE, plot = FALSE)
+plot(pdp_ids$IDS, pdp_ids$y, type = "l", xlab = "IDS", ylab = "Depression Score", main = "IDS test score")
+
+# Plot for Age
+pdp_AO <- plot(best_gbm, i = "AO", return.grid = TRUE, plot = FALSE)
+plot(pdp_AO$AO, pdp_AO$y, type = "l", xlab = "AO", ylab = "Depression Score", main = "Age at onset of disorder")
+
+# Plot for Sex
+pdp_disType <- plot(best_gbm, i = "disType", return.grid = TRUE, plot = FALSE)
+plot(pdp_disType$disType, pdp_disType$y, type = "l", xlab = "disType", ylab = "Depression Score", main = "Type of Disorder")
+```
+
+
+
+## 3.3 Single (pruned) regression tree
+
+```{r, echo = FALSE}
+plot(pruned_tree);
+text(pruned_tree , pretty = 0)
+```
+
+
+```{r, include = FALSE}
+summary(pruned_tree)
+```
+
+
+To see which variables were most influential in predicting later depression score when using a single regression tree, one can visually inspect which variables were used at which stage for splitting. Candidate variables that were used for earlier splits showed less deviance in predicting the response than other candidates. The variables that were used in tree construction were the Testscore on the Inventory of Depressive Symptomatology (IDS), Age at onset of disorder (AO), Type of Disorder (DisType), and wether a subject uses anti-depressant medication (ADuse).
+
+As we can see the first split was driven by the the Testscore on the Inventory of Depressive Symptomatology (IDS). Higher IDS scores seem to predict higher later depression score. For patients with lower IDS scores, the age at the onset of the disorder seems to play a crucial role. Patients who were younger than 22.5 years at the onset of the disoder and have a higher IDS score than 7.5 show substantially higher later depression score than people the same young patients with an IDS score lower than 7.5 or patients older than 22.5 years at the onset of the disorder. 
+
+Furthermore, patients with an IDS score higher than 13.5, and who were diagnosed with an anxiety disorder, show the highest depression scores. From the patients, only patients that do not use antidepressant medication show the highest predicted later depression scores.
+
+
+# Question 4: Predictive accuracy, confidence intervals
+
+```{r, include = FALSE}
+# GAM
+
+# Make predictions on the test data
+predictions_GAM <- predict(gam_model, newdata = test)
+
+# compute MSE
+MSE_GAM <- mean((predictions_GAM - test$dep_sev_fu)^2)
+
+
+
+TSS <- sum((test$dep_sev_fu - mean(test$dep_sev_fu))^2)
+
+# Convert MSE to RSS
+n <- length(test$dep_sev_fu)
+RSS_GAM <- MSE_GAM * n
+
+# Calculate R^2
+R2_GAM <- 1 - (RSS_GAM / TSS)
+print(paste("R^2:", R2_GAM))
+
+sprintf("The MSE of predicted depression score using generalized additive models is: %s.", MSE_GAM)
+sprintf("The RMSE of predicted depression score using generalized additive models machine is: %s.", sqrt(MSE_GAM))
+```
+
+
+
+
+```{r, include = FALSE}
+# Gradient Boosted Machines
+
+# Make predictions on the test data
+predictions_GBM <- predict(best_gbm, newdata = test, n.trees = bestTune$n.trees, type = "response")
+```
+
+```{r, include = FALSE}
+# compute MSE
+MSE_GBM <- mean((predictions_GBM - test$dep_sev_fu)^2)
+
+
+
+TSS <- sum((test$dep_sev_fu - mean(test$dep_sev_fu))^2)
+
+# Convert MSE to RSS
+n <- length(test$dep_sev_fu)
+RSS_GBM <- MSE_GBM * n
+
+# Calculate R^2
+R2_GBM <- 1 - (RSS_GBM / TSS)
+print(paste("R^2:", R2_GBM))
+
+sprintf("The MSE of predicted depression score using a Gradient boosted regression machine is: %s.", MSE_GBM)
+sprintf("The RMSE of predicted depression score using a Gradient boosted regression machine is: %s.", sqrt(MSE_GBM))
+
+```
+
+```{r, include = FALSE}
+## 4.3 Single (pruned) regression tree
+
+# make predictions on test data
+tree_preds <- predict(pruned_tree , newdata = test)
+plot(tree_preds , test$dep_sev_fu, xlab = "Predicted depression score", ylab = "Test depression score")
+abline(0, 1)
+
+#MSE
+MSE_tree <- mean((tree_preds- test$dep_sev_fu)^2)
+
+TSS <- sum((test$dep_sev_fu - mean(test$dep_sev_fu))^2)
+
+# Convert MSE to RSS
+n <- length(test$dep_sev_fu)
+RSS_tree <- MSE_tree * n
+
+# Calculate R^2
+R2_tree <- 1 - (RSS_tree / TSS)
+print(paste("R^2:", R2_tree))
+
+sprintf("The MSE of predicted depression score using a single pruned tree is: %s.", MSE_tree)
+sprintf("The RMSE of predicted depression score using a single pruned tree is: %s.", sqrt(MSE_tree))
+```
+
+I used the Mean Squared Error (MSE), and the R^2 to compare each model's prediction performance against each other on the test data. The R2 is a measure of how much variation in the response is explained by the model's predictions. The Generalized Additive Model had an MSE of 18.25573 and could capture 26.36% of the variation in the response in the test data. The Gradient Boosted Regression Machine achieved an MSE of 18.41213 and could capture 25.73% variation in the response. The single regression tree had an MSE of 22.34438 and captured only 9.87% variation in the response in the test data. Therefore, one can conclude that all models show poor predictions, but the single pruned regression tree performed worst. The best prediction was achieved by the generative additive model.
+
+
+
+
+
+## BONUS: Confidence intervals for predictions
+
+```{r, include = FALSE}
+set.seed(4036018) 
+
+
+n_boot <- 1000  # Number of bootstrap samples
+mse_diff_12 <- numeric(n_boot)
+mse_diff_13 <- numeric(n_boot)
+mse_diff_23 <- numeric(n_boot)
+
+for (i in 1:n_boot) {
+  # Bootstrap sample
+  sample_indices <- sample(1:length(test$dep_sev_fu), replace = TRUE)
+  y_test_boot <- test[sample_indices, "dep_sev_fu"]
+  
+  pred1_boot <- predictions_GAM[sample_indices]
+  pred2_boot <- predictions_GBM[sample_indices]
+  pred3_boot <- tree_preds[sample_indices]
+  
+  # Calculate MSE for each model on the bootstrap sample
+  mse1_boot <- mean((y_test_boot- pred1_boot)^2)
+  mse2_boot <- mean((y_test_boot - pred2_boot)^2)
+  mse3_boot <- mean((y_test_boot - pred3_boot)^2)
+  
+  # Compute pairwise differences
+  mse_diff_12[i] <- mse1_boot - mse2_boot
+  mse_diff_13[i] <- mse1_boot - mse3_boot
+  mse_diff_23[i] <- mse2_boot - mse3_boot
+}
+
+# Calculate confidence intervals
+ci_diff_12 <- quantile(mse_diff_12, c(0.025, 0.975))
+ci_diff_13 <- quantile(mse_diff_13, c(0.025, 0.975))
+ci_diff_23 <- quantile(mse_diff_23, c(0.025, 0.975))
+
+# Output the results
+list(
+  "Confidence Interval for MSE difference between GAM and GBM" = ci_diff_12,
+  "Confidence Interval for MSE difference between GAM and single tree" = ci_diff_13,
+  "Confidence Interval for MSE difference between GBM and single tree" = ci_diff_23
+)
+
+
+
+```
+
+To compute the confidence intervals for the pairwise differences in predictive performance I generated a bootstrapped sample of the test data for the response variable and the predictions for the reponse by the respective models, calculated the MSE for each bootstrapped sample (sampling with replacement), computed the pairwise MSE differences between the models and constructed confidence intervals (CI) from the distribution of the bootstrapped MSE differences (using the 2.5th and 97.5th percentiles of a 95% CI). The Confidence Interval for the MSE difference between GAM and GBM is [-0.7603545,  0.4164156]. The Confidence Interval for the MSE difference between GAM and the single tree is [-5.800563, -2.298901 ]. The Confidence Interval for the MSE difference between GBM and the single tree is [-5.448023, -2.477194 ].
+
+
+
+
+
+# Question 5: Conclusion of most influential variabels
+
+To see which predictor variables are related to later depression score, we can investigate which predictor variables were influential across all methods used. 
+Overall, taking into account all models, the Inventory of Depressive Symptomatology (IDS), the age at onset of the disoder (AO), the type of disorder (DisType), and whether subject uses anti-depressant medication (ADuse). This is again an arbitrary consideration since it depends on the importance metrics and architectures of the respective models. There were also other inluential variables detected by single models like whether a subject gets psychological treatment (PsychTreat), which were not found in other models.
+
+
+
+
+# Question 6: predict patient depression score
+
+```{r, include = FALSE}
+pat_dat <- read.table("Patient.csv", sep = ",", header = TRUE, stringsAsFactors = TRUE)
+```
+
+```{r, include = FALSE}
+
+# List of factor variables to adjust
+factor_vars <- c("disType", "Sexe", "pedigree", "alcohol", "bTypeDep", "bSocPhob", "bGAD", "bPanic", "bAgo", "sample")
+
+# Adjust factor levels in pat_dat to match MH_dat
+for (var in factor_vars) {
+  if (var %in% names(MH_dat) & var %in% names(pat_dat)) {
+    pat_dat[[var]] <- factor(pat_dat[[var]], levels = levels(MH_dat[[var]]))
+  }
+}
+```
+
+
+
+
+```{r, include = FALSE}
+## predict later depression score based on chosen models
+set.seed(4036018)
+
+pat_pred_GAM <- predict(gam_model, newdata = pat_dat) #17.7
+
+pat_pred_GBM <- predict(best_gbm, newdata = pat_dat, n.trees = bestTune$n.trees, type = "response") #17.39
+
+pat_pred_tree <- predict(pruned_tree , newdata = pat_dat) #13.04
+
+```
+
+To provide an estimate of the severity of David's depressive symptoms after 12 months I used the previously fitted models and provided David's data as the test data to predict his later depression score. The GAM predicted a score of 17.7, the GBM predicted a score of 17.39, and the single regression tree predicted a score of 13.04. So according to 2 out of 3 models, we should send David to the intense Depression treatment program. According to the single regression tree we should not send David to the program. However, the single regression tree also showed very poor performance based on the MSE and the R^2, which could be a reason to weigh its prediction less. We can also look at the uncertainty of our estimate for the final decision.
+
+
+## BONUS: Quanitfy uncertainty of the estimate
+
+
+```{r, include = FALSE}
+# Prediction with standard errors for GAM
+pred_gam <- predict(gam_model, newdata = pat_dat, se.fit = TRUE)
+pred_gam_fit <- pred_gam$fit
+pred_gam_se <- pred_gam$se.fit
+
+# Calculate prediction interval
+alpha <- 0.05  # 95% CI
+crit_value <- qt(1 - alpha/2, df = nrow(train) - length(gam_model$coefficients))
+lower_gam <- pred_gam_fit - crit_value * pred_gam_se
+upper_gam <- pred_gam_fit + crit_value * pred_gam_se
+ci_gam <- c(lower_gam, upper_gam)
+
+```
+
+```{r, include = FALSE}
+# Assuming gbm_model is from caret and has resamples
+residuals <- resid(gbm_model)
+mse <- mean(residuals^2)
+pred_gbm <- predict(best_gbm, newdata = pat_dat, n.trees = bestTune$n.trees)
+
+# Approximate standard error
+pred_gbm_se <- sqrt(mse)
+
+# Calculate prediction interval
+lower_gbm <- pred_gbm - crit_value * pred_gbm_se
+upper_gbm <- pred_gbm + crit_value * pred_gbm_se
+ci_gbm <- c(lower_gbm, upper_gbm)
+```
+
+```{r, include = FALSE}
+residuals_tree <- test$dep_sev_fu - predict(pruned_tree, newdata = test)
+mse_tree <- mean(residuals_tree^2)
+pred_tree <- predict(pruned_tree, newdata = pat_dat)
+
+# Approximate standard error
+pred_tree_se <- sqrt(mse_tree)
+
+# Calculate prediction interval
+lower_tree <- pred_tree - crit_value * pred_tree_se
+upper_tree <- pred_tree + crit_value * pred_tree_se
+ci_tree <- c(lower_tree, upper_tree)
+
+```
+
+I constructed confidence intervals for the predicted values based on the respective standard errors from the cross-validated model fitting processes. For the GAM the 95% prediction interval lies between (16.29379, 19.11403). For the GBM the 95% prediction interval lies between (9.284026, 25.505682). For the single regression tree the 95% prediction interval lies between (3.758488, 22.312308). Based on the width of the model's prediction intervals we can see that all prediction intervals include values both above and below the threshold of the referred treatment program. While for the GAM the threshold lies on the lower end of the interval, favoring a decision for the program, the intervals for GBM and the single tree span too far on both ends, signaling a high uncertainty of the estimate. So for the final decision I would say that it could be reasonable to send David to the treatment program, however, including high uncertainty.
+
+
+
+
+
