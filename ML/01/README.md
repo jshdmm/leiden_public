@@ -104,13 +104,13 @@ $$
 Component retention was triangulated with four criteria: proportion of variance explained (PVE), the cumulative PVE / scree elbow, Kaiser's eigenvalue rule, and Horn's parallel analysis.
 
 <p align="center">
-  <img src="img/cpve.png" width="480">
+  <img src="plots/cpve.png" width="480">
   <br>
   <em>Cumulative proportion of variance explained per number of components.</em>
 </p>
 
 <p align="center">
-  <img src="img/parallel_scree.png" width="560">
+  <img src="plots/parallel_scree.png" width="560">
   <br>
   <em>Horn's parallel analysis: observed eigenvalues against the mean eigenvalues of 1,000 simulated datasets.</em>
 </p>
@@ -128,7 +128,7 @@ Component retention was triangulated with four criteria: proportion of variance 
 To give the retained components meaning, the loading matrix was **varimax-rotated**, which polarizes the loadings (high → higher, low → lower) so each component draws on a distinct block of items.
 
 <p align="center">
-  <img src="img/biplot.png" width="560">
+  <img src="plots/biplot.png" width="560">
   <br>
   <em>Biplot of the first two principal components.</em>
 </p>
@@ -153,13 +153,13 @@ To give the retained components meaning, the loading matrix was **varimax-rotate
 k-means was run on the retained 5-component score matrix; the number of clusters was chosen via the elbow method on the within-cluster sum of squares and cross-checked visually in PC1–PC2 space.
 
 <p align="center">
-  <img src="img/elbow_wss.png" width="480">
+  <img src="plots/elbow_wss.png" width="480">
   <br>
   <em>Within-cluster sum of squares against the number of clusters.</em>
 </p>
 
 <p align="center">
-  <img src="img/kmeans_clusters.png" width="600">
+  <img src="plots/kmeans_clusters.png" width="600">
   <br>
   <em>The three k-means personality profiles in the space of the first two components.</em>
 </p>
@@ -176,7 +176,7 @@ k-means was run on the retained 5-component score matrix; the number of clusters
 Hierarchical clustering (Euclidean distance on the 5-component scores) was run with complete, average, and single linkage as a robustness check on the k-means solution.
 
 <p align="center">
-  <img src="img/dendrogram_complete.png" width="640">
+  <img src="plots/dendrogram_complete.png" width="640">
   <br>
   <em>Complete-linkage dendrogram with the chosen cut (red line, h = 13).</em>
 </p>
