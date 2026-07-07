@@ -10,6 +10,11 @@ A selection of projects from my master's in Statistics and Data Science at Leide
 
 <br>
 
-## [Project 2](https://github.com/jshdmm/leiden_public/tree/main/ML/02):
+## [Project 2](https://github.com/jshdmm/leiden_public/tree/main/ML/02): Using XGBoost, GAM and single regression trees to predict depression severity
+
+
+<br>
+
+## [Project 3](https://github.com/jshdmm/leiden_public/tree/main/ML/03): Causal Inference
 
 
