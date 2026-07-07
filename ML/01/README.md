@@ -4,7 +4,7 @@ This repository contains my first individual assignment for the **Statistical Le
 
 > **Assignment:** *Statistical Learning, Individual Assignment 1*,
 > submitted April 2024. The original questions can be inspected in [2024-assignment_1.pdf](2024-assignment_1.pdf), and the full report can be read in
-> [ind_assignment01_JD.pdf](ind_assignment01_JD.pdf).
+> [ind_assignment01_JD.pdf](ind_assignment01_JD.pdf). The full rmarkdown report including the code for the analyses can be inspected at [ind_assignment01_JD.Rmd](ind_assignment01_JD.Rmd).
 
 <br>
 
@@ -22,7 +22,7 @@ $$
 $$
 
 $$
-Y \sim \mathrm{Bernoulli}\left(\frac{e^{\eta}}{1 + e^{\eta}}\right)
+Y \sim \mathrm{Binom}\left(\frac{e^{\eta}}{1 + e^{\eta}}\right)
 $$
 
 Polynomials and indicator functions make the true decision boundary non-linear. Therefore, a flexible non-parametric method and a regularized linear method are expected to behave differently.
@@ -39,7 +39,7 @@ Polynomials and indicator functions make the true decision boundary non-linear. 
 
 ## Lasso Logistic Regression (LLR)
 
-- Parametric, **higher bias / low variance**: the L1 penalty shrinks irrelevant coefficients to near zero
+- Parametric, **higher bias / low variance**: the L1 penalty shrinks irrelevant coefficients to (near) zero
 - Shrinkage parameter $\lambda$ tuned via **10-fold cross-validation** (`cv.glmnet`, misclassification loss)
 - Built-in variable selection, but restricted to **linear** decision boundaries
 
@@ -57,14 +57,14 @@ Polynomials and indicator functions make the true decision boundary non-linear. 
 
 | Setting | kNN test accuracy | LLR test accuracy |
 |---|---|---|
-| Low-dimensional ($X_1$–$X_6$, $k = 79$) | **71.74%** | 67.28% |
-| High-dimensional ($X_1$–$X_{203}$, $k = 41$) | 57.14% | **67.02%** |
+| Low-dimensional ($X_1- X_6$, $k = 79$) | **71.74%** | 67.28% |
+| High-dimensional ($X_1 - X_{203}$, $k = 41$) | 57.14% | **67.02%** |
 
 1. With only 3 noise variables, kNN's flexibility captured the non-linear boundary and beat LLR, whose linear form couldn't represent the polynomial/indicator structure
 2. With 200 noise variables, kNN collapsed (high variance *and* high bias), while the lasso shrank virtually all noise coefficients to zero and held its accuracy almost unchanged, demonstrating the **bias-variance trade-off**
 3. In the low-dimensional fit, LLR zeroed out $X_5$ and $X_6$ and shrank $X_4$ to $\approx 0.008$, confirming its variable-selection behaviour even when it loses on accuracy
 
-**Part B: Unconvering the Big-5 using PCA**
+**Part B: unconvering the Big-5 using PCA**
 
 1. Five principal components retained (56.89% of variance), consistently supported by the elbow plot, Kaiser's rule, and parallel analysis
 2. After varimax rotation, the loading clusters map cleanly onto **neuroticism, extraversion, agreeableness, conscientiousness, and openness**, replicating the OCEAN model
@@ -81,10 +81,10 @@ Both classifiers were tuned with **10-fold cross-validation** on the 5,000 train
 
 | Setting | Model | Tuned parameter | Test accuracy |
 |---|---|---|---|
-| Low-dim ($X_1$–$X_6$) | kNN | $k = 79$ | **71.74%** |
-| Low-dim ($X_1$–$X_6$) | LLR | $\lambda = 0.0103$ | 67.28% |
-| High-dim ($X_1$–$X_{203}$) | kNN | $k = 41$ | 57.14% |
-| High-dim ($X_1$–$X_{203}$) | LLR | $\lambda = 0.0059$ | **67.02%** |
+| Low-dim ($X_1 - X_6$) | kNN | $k = 79$ | **71.74%** |
+| Low-dim ($X_1 - X_6$) | LLR | $\lambda = 0.0103$ | 67.28% |
+| High-dim ($X_1 - X_{203}$) | kNN | $k = 41$ | 57.14% |
+| High-dim ($X_1 - X_{203}$) | LLR | $\lambda = 0.0059$ | **67.02%** |
 
 **Results:**
 - In the low-dimensional setting, kNN's flexible decision boundary captured the polynomial/indicator structure of the true logit and beat the lasso by ~4.5 percentage points; the cross-validated $k = 79$ smooths the boundary enough to keep variance in check
