@@ -3,7 +3,7 @@
 This repository contains my first individual assignment for the **Statistical Learning** course of the Master's programme in Statistics & Data Science (Leiden University). The assignment consists of two parts. **Part A (supervised learning)** compares **k-Nearest Neighbours (kNN)** against **Lasso Logistic Regression (LLR)** on a simulated binary classification problem, first in a low-dimensional setting (3 relevant predictors + 3 noise variables) and then in a high-dimensional setting (3 relevant predictors + 200 noise variables). The assignment aimed at showcasing the **bias-variance trade-off** and the value of regularization under increasing noise. **Part B (unsupervised learning)** applies **Principal Component Analysis (PCA)** and clustering (**k-means**, **hierarchical**) to a personality questionnaire of 1,000 students, uncovering the well-established **Big Five (OCEAN)** personality structure.
 
 > **Assignment:** *Statistical Learning, Individual Assignment 1*,
-> submitted April 2024. The original questions can be inspected in [2024-assignment_1.pdf](2024-assignment_1.pdf) in
+> submitted April 2024. The original questions can be inspected in [2024-assignment_1.pdf](2024-assignment_1.pdf), and the full report can be read in
 > [ind_assignment01_JD.pdf](ind_assignment01_JD.pdf).
 
 <br>
@@ -25,7 +25,7 @@ $$
 Y \sim \mathrm{Bernoulli}\left(\frac{e^{\eta}}{1 + e^{\eta}}\right)
 $$
 
-Polynomials and indicator jumps make the true decision boundary non-linear. This is exactly the regime where a flexible non-parametric method and a regularized linear method should behave very differently.
+Polynomials and indicator functions make the true decision boundary non-linear. Therefore, a flexible non-parametric method and a regularized linear method are expected to behave differently.
 
 <br>
 
@@ -35,17 +35,17 @@ Polynomials and indicator jumps make the true decision boundary non-linear. This
 
 - Non-parametric, **low bias / high variance**: flexible enough to capture non-linear decision boundaries
 - $k$ tuned over 1–200 via **10-fold cross-validation** (`caret`), with centering and scaling
-- Sensitive to irrelevant predictors, since distances degrade as noise dimensions accumulate (curse of dimensionality)
+- Sensitive to noise predictors, since distances degrade as noise dimensions accumulate (curse of dimensionality)
 
 ## Lasso Logistic Regression (LLR)
 
-- Parametric, **higher bias / low variance**: the L1 penalty shrinks irrelevant coefficients to (near) zero
+- Parametric, **higher bias / low variance**: the L1 penalty shrinks irrelevant coefficients to near zero
 - Shrinkage parameter $\lambda$ tuned via **10-fold cross-validation** (`cv.glmnet`, misclassification loss)
 - Built-in variable selection, but restricted to **linear** decision boundaries
 
 ## PCA + Clustering (Part B)
 
-- Component retention decided by **PVE / cumulative PVE**, **scree (elbow) plot**, **Kaiser's rule**, and **Horn's parallel analysis** (`nFactors`)
+- Component retention decided by **Portion-of-Variance-Explained (PVE) / cumulative PVE**, **scree (elbow) plot**, **Kaiser's rule**, and **Horn's parallel analysis** (`nFactors`)
 - **Varimax rotation** of loadings for interpretability
 - **k-means** ($k$ chosen via elbow method on within-cluster SS) and **hierarchical clustering** (complete, average, and single linkage) on the retained PC scores
 
@@ -61,14 +61,14 @@ Polynomials and indicator jumps make the true decision boundary non-linear. This
 | High-dimensional ($X_1$–$X_{203}$, $k = 41$) | 57.14% | **67.02%** |
 
 1. With only 3 noise variables, kNN's flexibility captured the non-linear boundary and beat LLR, whose linear form couldn't represent the polynomial/indicator structure
-2. With 200 noise variables, kNN collapsed (high variance *and* high bias), while the lasso shrank virtually all noise coefficients to zero and held its accuracy almost unchanged: a textbook demonstration of the bias-variance trade-off
+2. With 200 noise variables, kNN collapsed (high variance *and* high bias), while the lasso shrank virtually all noise coefficients to zero and held its accuracy almost unchanged, demonstrating the **bias-variance trade-off**
 3. In the low-dimensional fit, LLR zeroed out $X_5$ and $X_6$ and shrank $X_4$ to $\approx 0.008$, confirming its variable-selection behaviour even when it loses on accuracy
 
-**Part B: the Big Five emerge from the data.**
+**Part B: Unconvering the Big-5 using PCA**
 
 1. Five principal components retained (56.89% of variance), consistently supported by the elbow plot, Kaiser's rule, and parallel analysis
 2. After varimax rotation, the loading clusters map cleanly onto **neuroticism, extraversion, agreeableness, conscientiousness, and openness**, replicating the OCEAN model
-3. k-means suggested **3 personality profiles** (sizes 284 / 390 / 326), differing mainly in **neuroticism** and **extraversion**; hierarchical clustering (complete linkage) produced a comparable 3-cluster solution (198 / 487 / 315)
+3. k-means suggested **3 personality profiles**, differing mainly in **neuroticism** and **extraversion**; hierarchical clustering (complete linkage) produced a comparable 3-cluster solution
 
 <br>
 <br>
