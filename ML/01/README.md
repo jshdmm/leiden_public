@@ -3,7 +3,7 @@
 This repository contains my first individual assignment for the **Statistical Learning** course of the Master's programme in Statistics & Data Science (Leiden University). The assignment consists of two parts. **Part A (supervised learning)** compares **k-Nearest Neighbours (kNN)** against **Lasso Logistic Regression (LLR)** on a simulated binary classification problem, first in a low-dimensional setting (3 relevant predictors + 3 noise variables) and then in a high-dimensional setting (3 relevant predictors + 200 noise variables). The assignment aimed at showcasing the **bias-variance trade-off** and the value of regularization under increasing noise. **Part B (unsupervised learning)** applies **Principal Component Analysis (PCA)** and clustering (**k-means**, **hierarchical**) to a personality questionnaire of 1,000 students, uncovering the well-established **Big Five (OCEAN)** personality structure.
 
 > **Assignment:** *Statistical Learning, Individual Assignment 1*,
-> submitted April 2024. Full write-up in
+> submitted April 2024. The original questions can be inspected in [2024-assignment_1.pdf](2024-assignment_1.pdf) in
 > [ind_assignment01_JD.pdf](ind_assignment01_JD.pdf).
 
 <br>
@@ -12,7 +12,7 @@ This repository contains my first individual assignment for the **Statistical Le
 
 | Dataset | Description | Source |
 |---|---|---|
-| `Data4036018.csv` | 10,000 simulated cases: binary response $Y$, relevant predictors $X_1$–$X_3$, and 200 uniform noise variables $X_4$–$X_{203}$. Generated with a personal seed via [GenerateDataSDS.R](GenerateDataSDS.R) | simulated |
+| `Data4036018.csv` | 10,000 simulated cases: binary response $Y$, relevant predictors $X_1 – X_3$, and 200 uniform noise variables $X_4 - X_{203}$. Generated with a personal seed via [GenerateDataSDS.R](GenerateDataSDS.R) | simulated |
 | `data.US.csv` / `data.US.txt` | 1,000 students × 30 standardized personality items (`V2`–`V31`), ~1 item per personality facet | course-provided |
 
 **Simulation design (Part A).** The predictors are drawn as $X_1 \sim \mathcal{U}(-2, 2)$, $X_2 \sim \mathcal{N}(4, 2)$, $X_3 \sim \mathcal{N}(0, 1)$; all noise variables are $\mathcal{U}(-2, 2)$. The response is generated from a deliberately **non-linear** logit:
