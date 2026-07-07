@@ -109,6 +109,8 @@ Component retention was triangulated with four criteria: proportion of variance 
   <em>Cumulative proportion of variance explained per number of components.</em>
 </p>
 
+<br>
+
 <p align="center">
   <img src="plots/parallel_scree.png" width="560">
   <br>
@@ -130,7 +132,7 @@ To give the retained components meaning, the loading matrix was **varimax-rotate
 <p align="center">
   <img src="plots/biplot.png" width="560">
   <br>
-  <em>Biplot of the first two principal components.</em>
+  <em>Questionnaire Item loadings on first two principal components.</em>
 </p>
 
 **Results:**
@@ -224,7 +226,7 @@ All model fits use `set.seed(4036018)` for reproducibility; training/test data a
 
 # 💡 What can we take away from this?
 
-No classifier dominates universally: the same kNN that wins by 4+ percentage points in six dimensions loses by 10 in two hundred. Which method is "right" depends on the ratio of signal to noise dimensions. Flexibility pays off only as long as the variance it introduces stays controlled, and regularization pays off exactly when it doesn't. On the unsupervised side, PCA plus clustering recovered the Big Five structure without ever being told it exists, a nice reminder that well-established psychological constructs are visible directly in the covariance structure of the data.
+No classifier outperforms the other universally (**no-free-lunch theorem**). The same kNN that wins by 4+ percentage points in six dimensions loses by 10 in two hundred. Which method fits best on this given dataset depends on the ratio of signal to noise dimensions. Flexibility pays off only as long as the variance it introduces stays controlled, and regularization pays off exactly when it doesn't. On the unsupervised side, PCA plus clustering recovered the Big Five structure without ever being told it exists, a nice reminder that well-established psychological constructs are visible directly in the covariance structure of the data.
 
 <br>
 
