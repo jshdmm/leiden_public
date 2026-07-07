@@ -1,10 +1,10 @@
-# 💡 Project Overview: Predicting Depression Severity with GAM, Gradient Boosting & Regression Trees
+# 💡 Project Overview: Predicting Depression Severity using Machine Learning
 
 This repository contains my second individual assignment for the **Statistical Learning** course of the Master's programme in Statistics & Data Science (Leiden University). The task: predict the **severity of depressive symptoms after 12 months** (`dep_sev_fu`) for patients with depression and/or anxiety disorders from a large epidemiological dataset of biopsychosocial predictors. Three supervised methods of increasing flexibility and decreasing interpretability are compared: a **single (pruned) regression tree**, a **Generalized Additive Model (GAM)**, and a **Gradient Boosting Machine (GBM)**. The fitted models are then used for a concrete clinical decision: should a new patient ("David") be referred to an intensive depression treatment program?
 
 > **Assignment:** *Statistical Learning, Individual Assignment 2*,
-> submitted May 2024. Full write-up in
-> [stat_learning_ind_assignment_02_JD.pdf](stat_learning_ind_assignment_02_JD.pdf).
+> submitted May 2024. The original questions can be inspected in [Assignment 2.pdf](Assignment%202.pdf), and the full report can be read in
+> [stat_learning_ind_assignment_02_JD.pdf](stat_learning_ind_assignment_02_JD.pdf). The full rmarkdown report including the code for the analyses can be inspected at [stat_learn_ind_assignment_02_JD.Rmd](stat_learn_ind_assignment_02_JD.Rmd).
 
 <br>
 
@@ -30,7 +30,7 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 ## Gradient Boosting Machine (GBM)
 
 - Sequential ensemble of small trees, each fitted to the residuals of its predecessors
-- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees $\in \{10, \dots, 2500\}$, and interaction depth 1–4
+- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees $\in \{10, \dots, 2500\}$, and interaction depth 1-4
 - **Selected model: 1,000 trees, shrinkage 0.01, interaction depth 2**, min. 10 obs. per leaf
 - Variable importance via normalized total gain; effect shapes via **partial dependence plots**
 
@@ -52,11 +52,11 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 | GBM | 18.41 | 25.7% |
 | Single pruned tree | 22.34 | 9.9% |
 
-1. **GAM and GBM are statistically indistinguishable**: the bootstrapped 95% CI for their MSE difference, $[-0.76,\ 0.42]$, contains zero, while both clearly beat the single tree (CIs $[-5.80,\ -2.30]$ and $[-5.45,\ -2.48]$ exclude zero)
-2. **The same predictors dominate across all three model families:** baseline IDS score (31.3% relative influence in the GBM), age at disorder onset, disorder type (comorbid > depressive > anxiety), and antidepressant use. This is a reassuring sign that the signal is real, not model-specific
-3. Effect shapes are clinically plausible: higher baseline IDS (especially > 16) and earlier disorder onset predict worse 12-month outcomes; antidepressant use and psychological treatment are associated with lower follow-up severity
+1. **GAM and GBM are statistically indistinguishable**: the bootstrapped 95% CI for their MSE difference contains zero, while both clearly beat the single tree
+2. **The same predictors dominate across all three model families:** baseline IDS score, age at disorder onset, disorder type (comorbid > depressive > anxiety), and antidepressant use. This is a reassuring sign that the signal is real, not model-specific
+3. Effect shapes are clinically plausible: higher baseline IDS and earlier disorder onset predict worse 12-month outcomes; antidepressant use and psychological treatment are associated with lower follow-up severity
 
-**The clinical decision:** for patient David, the GAM predicts a 12-month severity of **17.7** (95% interval 16.3–19.1), the GBM **17.4** (9.3–25.5), and the single tree **13.0** (3.8–22.3). Two of three models, including the two best-performing ones, put him above the referral threshold. The recommendation is therefore to **refer David to the intensive treatment program**, while acknowledging the substantial uncertainty in the tree-based intervals.
+**The clinical decision:** for patient David, the GAM predicts a 12-month severity of **17.7**, the GBM **17.4**, and the single tree **13.0** (see prediction intervals below). Two of three models, including the two best-performing ones, put him above the referral threshold. The recommendation is therefore to **refer David to the intensive treatment program**, while acknowledging the substantial uncertainty in the tree-based intervals.
 
 <br>
 <br>
@@ -68,7 +68,7 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 The GAM fits a separate smoothing spline per continuous predictor, so the shape of each effect can be inspected directly while all other predictors are held constant.
 
 <p align="center">
-  <img src="img/gam_splines.png" width="700">
+  <img src="plots/gam_splines.png" width="700">
   <br>
   <em>Estimated smooth effects of the continuous predictors on 12-month depression severity, with partial residuals.</em>
 </p>
@@ -83,10 +83,10 @@ The GAM fits a separate smoothing spline per continuous predictor, so the shape 
 
 ## GBM: hyperparameter tuning
 
-The tuning grid crossed learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees from 10 to 2,500, and interaction depth 1–4, evaluated by 10-fold cross-validated RMSE.
+The tuning grid crossed learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees from 10 to 2,500, and interaction depth 1-4, evaluated by 10-fold cross-validated RMSE.
 
 <p align="center">
-  <img src="img/gbm_tuning.png" width="700">
+  <img src="plots/gbm_tuning.png" width="700">
   <br>
   <em>Cross-validated RMSE across the tuning grid. The minimum is reached at 1,000 trees, shrinkage 0.01, interaction depth 2.</em>
 </p>
@@ -102,9 +102,9 @@ The tuning grid crossed learning rate $\in \{0.1, 0.01, 0.001\}$, number of tree
 Variable importance aggregates each feature's loss reduction over every split it participates in (normalized total gain). The effect *shapes* of the top variables are then examined with partial dependence functions.
 
 <p align="center">
-  <img src="img/pdp_ids.png" width="290">
-  <img src="img/pdp_ao.png" width="290">
-  <img src="img/pdp_distype.png" width="290">
+  <img src="plots/pdp_ids.png" width="290">
+  <img src="plots/pdp_ao.png" width="290">
+  <img src="plots/pdp_distype.png" width="290">
   <br>
   <em>Partial dependence of predicted 12-month severity on baseline IDS score, age at onset, and disorder type.</em>
 </p>
@@ -122,13 +122,15 @@ Variable importance aggregates each feature's loss reduction over every split it
 The full tree was grown by recursive binary splitting on RSS, then pruned via cross-validated cost-complexity.
 
 <p align="center">
-  <img src="img/cv_pruning.png" width="640">
+  <img src="plots/cv_pruning.png" width="640">
   <br>
   <em>Cross-validated deviance against tree size and cost-complexity parameter k. The minimum sits at 6 terminal splits (k ≈ 323.2).</em>
 </p>
 
+<br>
+
 <p align="center">
-  <img src="img/tree_pruned.png" width="640">
+  <img src="plots/tree_pruned.png" width="640">
   <br>
   <em>The pruned tree: the entire decision process in one plot.</em>
 </p>
@@ -136,7 +138,7 @@ The full tree was grown by recursive binary splitting on RSS, then pruned via cr
 **Results:**
 - The tree independently selects the same variables as the ensembles: **IDS first** (root split), then **AO**, **disType**, and **ADuse**
 - Interpretable rules fall out directly, e.g.: patients with IDS > 13.5 *and* an anxiety-type diagnosis *and* no antidepressant use get the highest predicted severity; patients with low IDS but onset before age 22.5 still land in an elevated-risk leaf
-- The price of this readability shows up in Question 4: only 9.9% explained test variance
+- The price of this readability shows up in the predictive accuracy: only 9.9% explained test variance
 
 <br>
 
