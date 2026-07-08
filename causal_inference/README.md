@@ -1,8 +1,8 @@
 # 💡 Project Overview: Isolating the Causal Effect of Education on Stroke Risk
 
-This repository contains our group assignment for the **Causal Inference** course of the Master's programme in Statistics & Data Science (Leiden University), conducted together with M. L. Abrahams and P. T. Rickert (Group 11). The research question: does higher educational attainment *causally* reduce the risk of stroke? Earlier Framingham analyses (e.g. Garrison et al., 1993) reported an inverse *association* between education and cardiovascular disease, but association is not causation. Here the causal effect is isolated explicitly: causal assumptions are encoded in a **Directed Acyclic Graph (DAG)**, tested against the data, and the **Average Treatment Effect (ATE)** is estimated with **propensity score reweighting (IPW)** on a subset of the Framingham Heart Study.
+This repository contains our group assignment for the **Causal Inference** course of the Master's programme in Statistics & Data Science (Leiden University). The research question: does higher educational attainment *causally* reduce the risk of stroke? Earlier Framingham analyses (e.g. Garrison et al., 1993) reported an inverse *association* between education and cardiovascular disease, but association is not causation. Here the causal effect is isolated explicitly: causal assumptions are encoded in a **Directed Acyclic Graph (DAG)**, tested against the data, and the **Average Treatment Effect (ATE)** is estimated with **propensity score reweighting (IPW)** on a subset of the Framingham Heart Study.
 
-> **Assignment:** *Causal Inference 1, Group Assignment (Group 11)*,
+> **Assignment:** *Causal Inference 1, Group Assignment*,
 > submitted March 2025. The full report can be read in [CI_final_report.pdf](CI_final_report.pdf).
 > The rmarkdown files including the code for the analyses can be inspected at
 > [03_DAG.Rmd](03_DAG.Rmd) (DAG specification & testing), [04_outcome_regression.Rmd](04_outcome_regression.Rmd) (outcome regression & standardization), and [06_missingness.Rmd](06_missingness.Rmd) (missing data analysis).
@@ -133,6 +133,12 @@ Out of 4,434 participants, 192 are incomplete: 113 missing on the exposure `EDUC
 
 <br>
 
+# 💡 What can we take away from this?
+
+Correlation studies on Framingham data reported the education-stroke association decades ago; the added value of the causal framework is making the assumptions *explicit and testable*. Encoding them in a DAG exposed three assumptions the data rejected, and the graph told us exactly how to revise the model and, importantly, that the revision left the adjustment set intact. The resulting estimate of a 2.1 percentage point risk reduction is modest but survives confounding adjustment, supporting a genuine protective effect of education. What remains open is the mechanism: education presumably acts through mediators like smoking, BMI, and medication adherence, and quantifying those pathway-specific effects (e.g. via mediation analysis) would be the natural next step for designing actual interventions.
+
+<br>
+
 # 🛠️ Implementation details
 
 ## Project structure
@@ -162,12 +168,6 @@ rmarkdown::render("06_missingness.Rmd")         # missingness mechanism
 ```
 
 Analyses were performed with R version 4.3.3 or later.
-
-<br>
-
-# 💡 What can we take away from this?
-
-Correlation studies on Framingham data reported the education-stroke association decades ago; the added value of the causal framework is making the assumptions *explicit and testable*. Encoding them in a DAG exposed three assumptions the data rejected, and the graph told us exactly how to revise the model and, importantly, that the revision left the adjustment set intact. The resulting estimate of a 2.1 percentage point risk reduction is modest but survives confounding adjustment, supporting a genuine protective effect of education. What remains open is the mechanism: education presumably acts through mediators like smoking, BMI, and medication adherence, and quantifying those pathway-specific effects (e.g. via mediation analysis) would be the natural next step for designing actual interventions.
 
 <br>
 

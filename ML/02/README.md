@@ -173,6 +173,12 @@ Pairwise MSE differences on the test set were bootstrapped (1,000 resamples, per
 
 <br>
 
+# 💡 What can we take away from this?
+
+Model choice here is a trade-off between interpretability and accuracy, but the trade-off is not linear. The single tree gives up 16 percentage points of explained variance for its readability, while the GAM matches the boosted ensemble's accuracy *and* keeps every effect individually interpretable, making it arguably the best of both worlds for clinical communication. Equally important, uncertainty quantification changed the story: point predictions alone suggested a confident referral, but the bootstrap and prediction intervals revealed how much that confidence should be tempered. In applied prediction, and especially in medicine, reporting the interval is as important as reporting the estimate.
+
+<br>
+
 # 🛠️ Implementation details
 
 ## Project structure
@@ -197,12 +203,6 @@ rmarkdown::render("stat_learn_ind_assignment_02_JD.Rmd")
 ```
 
 All fits use `set.seed(4036018)`; the train/test split samples 500 test observations from the 1,500 patients. Note that the GBM grid search (10-fold CV × 60 parameter combinations) takes a while.
-
-<br>
-
-# 💡 What can we take away from this?
-
-Model choice here is a trade-off between interpretability and accuracy, but the trade-off is not linear. The single tree gives up 16 percentage points of explained variance for its readability, while the GAM matches the boosted ensemble's accuracy *and* keeps every effect individually interpretable, making it arguably the best of both worlds for clinical communication. Equally important, uncertainty quantification changed the story: point predictions alone suggested a confident referral, but the bootstrap and prediction intervals revealed how much that confidence should be tempered. In applied prediction, and especially in medicine, reporting the interval is as important as reporting the estimate.
 
 <br>
 

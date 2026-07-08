@@ -190,6 +190,12 @@ Hierarchical clustering (Euclidean distance on the 5-component scores) was run w
 
 <br>
 
+# 💡 What can we take away from this?
+
+No classifier outperforms the other universally (**no-free-lunch theorem**). The same kNN that wins by 4+ percentage points in six dimensions loses by 10 in two hundred. Which method fits best on this given dataset depends on the ratio of signal to noise dimensions. Flexibility pays off only as long as the variance it introduces stays controlled, and regularization pays off exactly when it doesn't. On the unsupervised side, PCA plus clustering recovered the Big Five structure without ever being told it exists, a nice reminder that well-established psychological constructs are visible directly in the covariance structure of the data.
+
+<br>
+
 # 🛠️ Implementation details
 
 ## Project structure
@@ -221,12 +227,6 @@ data <- GenerateDataSDS(seed = 4036018)
 ```
 
 All model fits use `set.seed(4036018)` for reproducibility; training/test data are split 50/50 (5,000 / 5,000 observations).
-
-<br>
-
-# 💡 What can we take away from this?
-
-No classifier outperforms the other universally (**no-free-lunch theorem**). The same kNN that wins by 4+ percentage points in six dimensions loses by 10 in two hundred. Which method fits best on this given dataset depends on the ratio of signal to noise dimensions. Flexibility pays off only as long as the variance it introduces stays controlled, and regularization pays off exactly when it doesn't. On the unsupervised side, PCA plus clustering recovered the Big Five structure without ever being told it exists, a nice reminder that well-established psychological constructs are visible directly in the covariance structure of the data.
 
 <br>
 
