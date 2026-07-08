@@ -1,7 +1,8 @@
 # leiden_public
-<br>
+
 A selection of projects from my master's in Statistics and Data Science at Leiden University. Please click on the highlighted project name to see more details.
 
+<br>
 <br>
 
 ## [Project 1.A](https://github.com/jshdmm/leiden_public/tree/main/ML/01): Machine Learning: Showcasing the bias-variance-trade-off, curse of dimensionality, and no-free lunch theorem (superised)
