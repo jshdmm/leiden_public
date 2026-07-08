@@ -11,13 +11,13 @@ This repository contains our group assignment for the **Causal Inference** cours
 
 # 🔗 Background
 
-The **Framingham Heart Study** is a prospective cohort study on the etiology of cardiovascular disease, running since 1948. This analysis uses a teaching subset of $N = 4434$ participants included between 1956 and 1968 and followed for 24 years. Using potential outcome notation with $Y$ the stroke outcome and $X$ the education level, the target estimand is the risk difference
+The **Framingham Heart Study** is a prospective cohort study on the etiology of cardiovascular disease, running since 1948. This analysis uses a teaching subset of N = 4434 participants included between 1956 and 1968 and followed for 24 years. Using potential outcome notation with Y the stroke outcome and X the education level, the target estimand is the risk difference
 
 $$
 \text{ATE} = E[Y(X{=}0)] - E[Y(X{=}1)]
 $$
 
-where $X = 1$ denotes college education or higher and $X = 0$ high school or lower. A positive ATE means higher education is protective.
+where X = 1 denotes college education or higher and X = 0 high school or lower. A positive ATE means higher education is protective.
 
 <br>
 
@@ -44,7 +44,7 @@ where $X = 1$ denotes college education or higher and $X = 0$ high school or low
 ## Causal assumptions: the DAG
 
 - Causal assumptions encoded with `dagitty`: education affects stroke risk via the mediators **BMI, blood pressure medication, smoking, and diabetes**, which act on stroke partly through **hypertension**; **age and sex** open backdoor paths as common causes
-- The **backdoor criterion** (Pearl, 2009) identifies $\{AGE, SEX\}$ as the sufficient adjustment set; mediators are deliberately *not* adjusted for, since they lie on the causal pathway
+- The **backdoor criterion** (Pearl, 2009) identifies {AGE, SEX} as the sufficient adjustment set; mediators are deliberately *not* adjusted for, since they lie on the causal pathway
 
 <p align="center">
   <img src="plots/dag.png" width="560">
@@ -59,21 +59,21 @@ where $X = 1$ denotes college education or higher and $X = 0$ high school or low
 
 ## Propensity score reweighting (IPW)
 
-- Propensity score $e(x) = P(EDUC{=}1 \mid AGE, SEX)$ estimated by logistic regression
-- Weights $w_i = 1/e(x_i)$ for the high-education group and $w_i = 1/(1 - e(x_i))$ for the low-education group
-- Covariate balance assessed with **standardized mean differences (SMD)**, aiming for $|SMD| < 0.1$ after weighting; identification rests on **consistency, positivity, and conditional exchangeability**
+- Propensity score e(x) = P(EDUC = 1 | AGE, SEX) estimated by logistic regression
+- Weights wᵢ = 1/e(xᵢ) for the high-education group and wᵢ = 1/(1 - e(xᵢ)) for the low-education group
+- Covariate balance assessed with **standardized mean differences (SMD)**, aiming for |SMD| < 0.1 after weighting; identification rests on **consistency, positivity, and conditional exchangeability**
 - As a complementary approach, an **outcome regression with standardization** (`stdReg`) was fitted in [04_outcome_regression.Rmd](04_outcome_regression.Rmd)
 
 ## Missing data analysis
 
-- Missingness patterns inspected with `mice::md.pattern`; a logistic regression of the missingness indicator $P(\text{EDUC missing} \mid \text{covariates})$ probes whether the mechanism is MCAR, MAR, or MNAR
+- Missingness patterns inspected with `mice::md.pattern`; a logistic regression of the missingness indicator P(EDUC missing | covariates) probes whether the mechanism is MCAR, MAR, or MNAR
 
 <br>
 
 # 📊 Key findings (TLDR)
 
-1. **Higher education causally reduces stroke risk in this analysis:** estimated 24-year stroke risk is **9.87%** under low education vs. **7.78%** under high education, an ATE of **2.1 percentage points** with 95% CI $[0.002,\ 0.040]$ that excludes zero
-2. **The initial DAG was refuted in part by the data:** three implied conditional independencies failed testing, all involving smoking. The DAG was revised accordingly, and the adjustment set $\{AGE, SEX\}$ remained valid
+1. **Higher education causally reduces stroke risk in this analysis:** estimated 24-year stroke risk is **9.87%** under low education vs. **7.78%** under high education, an ATE of **2.1 percentage points** with 95% CI [0.002, 0.040] that excludes zero
+2. **The initial DAG was refuted in part by the data:** three implied conditional independencies failed testing, all involving smoking. The DAG was revised accordingly, and the adjustment set {AGE, SEX} remained valid
 3. **IPW achieved covariate balance:** age was imbalanced before weighting (SMD = -.163) and well balanced after (-.006), with strong propensity score overlap between groups
 4. **Missingness is benign:** only BMI weakly predicts missing education status (OR ≈ 1.06), a difference of ~1 BMI unit with no practical relevance, so the complete-case analysis carries minimal bias risk
 
@@ -84,12 +84,12 @@ where $X = 1$ denotes college education or higher and $X = 0$ high school or low
 
 ## Testing the DAG: three refuted independencies
 
-After Holm-Bonferroni correction, three implied conditional independencies showed significantly non-zero partial correlations, all involving current smoking status: smoking and BMI ($r = -.17$, $p < .001$), smoking and sex ($r = -.20$, $p < .001$), and smoking and age ($r = -.21$, $p < .001$).
+After Holm-Bonferroni correction, three implied conditional independencies showed significantly non-zero partial correlations, all involving current smoking status: smoking and BMI (r = -.17, p < .001), smoking and sex (r = -.20, p < .001), and smoking and age (r = -.21, p < .001).
 
 **Results:**
 - All three violations are substantively plausible: men smoke more than women, younger participants smoke more, and smoking suppresses appetite and raises metabolism, lowering BMI
-- The DAG was revised by adding the edges $SEX \to CURSMOKE$, $AGE \to CURSMOKE$, and $CURSMOKE \to BMI$
-- Crucially, the revised DAG implies **no new backdoor paths**: $\{AGE, SEX\}$ remains the sufficient adjustment set, so the estimation strategy survives the model revision
+- The DAG was revised by adding the edges SEX → CURSMOKE, AGE → CURSMOKE, and CURSMOKE → BMI
+- Crucially, the revised DAG implies **no new backdoor paths**: {AGE, SEX} remains the sufficient adjustment set, so the estimation strategy survives the model revision
 
 <br>
 
@@ -102,9 +102,9 @@ After Holm-Bonferroni correction, three implied conditional independencies showe
 </p>
 
 **Results:**
-- Age predicts education ($\beta = -.019$, $z = -4.69$, $p < .001$); sex does not ($p = .966$)
+- Age predicts education (β = -.019, z = -4.69, p < .001); sex does not (p = .966)
 - Propensity scores span 0.211 - 0.353 (low education) and 0.214 - 0.349 (high education): near-complete overlap, so **positivity holds comfortably**
-- After weighting, both confounders are balanced (age SMD: $-.163 \to -.006$; sex: $-.002 \to -.001$), with minimal loss of effective sample size (3,045 → 3,038 and 1,196 → 1,180)
+- After weighting, both confounders are balanced (age SMD: -.163 → -.006; sex: -.002 → -.001), with minimal loss of effective sample size (3,045 → 3,038 and 1,196 → 1,180)
 
 <br>
 
@@ -112,9 +112,9 @@ After Holm-Bonferroni correction, three implied conditional independencies showe
 
 | Quantity | Estimate | 95% CI |
 |---|---|---|
-| Stroke risk, low education $E[Y(X{=}0)]$ | 9.87% | $[8.89,\ 10.92]$ |
-| Stroke risk, high education $E[Y(X{=}1)]$ | 7.78% | $[6.47,\ 7.97]$ |
-| **ATE (risk difference)** | **0.021** | $[0.002,\ 0.040]$ |
+| Stroke risk, low education E[Y(X = 0)] | 9.87% | [8.89, 10.92] |
+| Stroke risk, high education E[Y(X = 1)] | 7.78% | [6.47, 7.97] |
+| **ATE (risk difference)** | **0.021** | [0.002, 0.040] |
 
 **Results:**
 - The interval excludes zero: lower education carries a statistically significantly higher stroke risk after removing confounding by age and sex
@@ -127,7 +127,7 @@ After Holm-Bonferroni correction, three implied conditional independencies showe
 Out of 4,434 participants, 192 are incomplete: 113 missing on the exposure `EDUC`, 61 on `BPMEDS`, 19 on `BMI`; outcome and confounders are fully observed.
 
 **Results:**
-- In the missingness regression, only BMI predicts a missing education status (OR ≈ 1.06 per BMI unit); a t-test confirms a small difference in BMI between observed ($M = 25.81$) and missing ($M = 26.90$) education groups ($t(117.01) = -2.78$, $p < .01$)
+- In the missingness regression, only BMI predicts a missing education status (OR ≈ 1.06 per BMI unit); a t-test confirms a small difference in BMI between observed (M = 25.81) and missing (M = 26.90) education groups (t(117.01) = -2.78, p < .01)
 - Both group means fall in the same overweight category, so the violation of MCAR is statistically detectable but practically negligible
 - Verdict: the data can be treated as approximately MCAR/MAR. Complete-case analysis is defensible, though multiple imputation is recommended as a robustness check in future work
 

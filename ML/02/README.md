@@ -30,14 +30,14 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 ## Gradient Boosting Machine (GBM)
 
 - Sequential ensemble of small trees, each fitted to the residuals of its predecessors
-- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees $\in \{10, \dots, 2500\}$, and interaction depth 1-4
+- Hyperparameters tuned by **10-fold cross-validation** (`caret`) over a grid of learning rate ∈ {0.1, 0.01, 0.001}, number of trees ∈ {10, …, 2500}, and interaction depth 1-4
 - **Selected model: 1,000 trees, shrinkage 0.01, interaction depth 2**, min. 10 obs. per leaf
 - Variable importance via normalized total gain; effect shapes via **partial dependence plots**
 
 ## Single (pruned) regression tree
 
 - Fully grown CART (`tree`), then cost-complexity **pruning via cross-validation**
-- Optimal subtree: **6 terminal splits** (cost-complexity $k \approx 323.2$)
+- Optimal subtree: **6 terminal splits** (cost-complexity k ≈ 323.2)
 - Maximally interpretable, since the whole decision process fits in one plot, at the price of predictive power
 
 <br>
@@ -46,7 +46,7 @@ Predictors mix demographics (`Age`, `Sexe`, `aedu` education years), clinical me
 
 **Test-set performance (500 held-out patients):**
 
-| Model | Test MSE | Test $R^2$ |
+| Model | Test MSE | Test R² |
 |---|---|---|
 | **GAM** | **18.26** | **26.4%** |
 | GBM | 18.41 | 25.7% |
@@ -74,16 +74,16 @@ The GAM fits a separate smoothing spline per continuous predictor, so the shape 
 </p>
 
 **Results:**
-- **Age at disorder onset (AO)** shows the strongest association ($F = 49.8$, $p < .00001$): the later the disorder first appeared, the lower the follow-up severity. The effect is close to linear ($\text{edf} \approx 1$)
-- **Baseline IDS score** is strongly predictive ($F \approx 15$) and clearly **non-linear** ($\text{edf} \approx 2$), justifying the move beyond a plain linear model
-- **% time symptomatic in the past 4 years (LCImax)** adds a modest, near-linear positive effect ($F = 15.0$, $p < .001$)
-- Among the parametric terms: disorder type matters ($F = 12.2$, $p < .0001$; comorbid > depressive > anxiety), and both **antidepressant use** ($F = 25.9$) and **psychological treatment** ($F = 15.4$) are associated with *lower* follow-up severity
+- **Age at disorder onset (AO)** shows the strongest association (F = 49.8, p < .00001): the later the disorder first appeared, the lower the follow-up severity. The effect is close to linear (edf ≈ 1)
+- **Baseline IDS score** is strongly predictive (F ≈ 15) and clearly **non-linear** (edf ≈ 2), justifying the move beyond a plain linear model
+- **% time symptomatic in the past 4 years (LCImax)** adds a modest, near-linear positive effect (F = 15.0, p < .001)
+- Among the parametric terms: disorder type matters (F = 12.2, p < .0001; comorbid > depressive > anxiety), and both **antidepressant use** (F = 25.9) and **psychological treatment** (F = 15.4) are associated with *lower* follow-up severity
 
 <br>
 
 ## GBM: hyperparameter tuning
 
-The tuning grid crossed learning rate $\in \{0.1, 0.01, 0.001\}$, number of trees from 10 to 2,500, and interaction depth 1-4, evaluated by 10-fold cross-validated RMSE.
+The tuning grid crossed learning rate ∈ {0.1, 0.01, 0.001}, number of trees from 10 to 2,500, and interaction depth 1-4, evaluated by 10-fold cross-validated RMSE.
 
 <p align="center">
   <img src="plots/gbm_tuning.png" width="700">
@@ -148,9 +148,9 @@ Pairwise MSE differences on the test set were bootstrapped (1,000 resamples, per
 
 | Comparison | 95% CI of MSE difference | Verdict |
 |---|---|---|
-| GAM − GBM | $[-0.76,\ 0.42]$ | no reliable difference |
-| GAM − tree | $[-5.80,\ -2.30]$ | GAM clearly better |
-| GBM − tree | $[-5.45,\ -2.48]$ | GBM clearly better |
+| GAM − GBM | [-0.76, 0.42] | no reliable difference |
+| GAM − tree | [-5.80, -2.30] | GAM clearly better |
+| GBM − tree | [-5.45, -2.48] | GBM clearly better |
 
 **Results:**
 - The GAM's nominal lead over the GBM (MSE 18.26 vs. 18.41) is **not statistically distinguishable**: the interval comfortably contains zero
@@ -162,9 +162,9 @@ Pairwise MSE differences on the test set were bootstrapped (1,000 resamples, per
 
 | Model | Point prediction | 95% prediction interval |
 |---|---|---|
-| GAM | 17.7 | $(16.3,\ 19.1)$ |
-| GBM | 17.4 | $(9.3,\ 25.5)$ |
-| Single tree | 13.0 | $(3.8,\ 22.3)$ |
+| GAM | 17.7 | (16.3, 19.1) |
+| GBM | 17.4 | (9.3, 25.5) |
+| Single tree | 13.0 | (3.8, 22.3) |
 
 **Results:**
 - The GAM, the best-calibrated model, places David's interval almost entirely **above** the referral threshold
