@@ -7,7 +7,7 @@ A selection of projects from my master's in Statistics and Data Science at Leide
 <br>
 
 <p align="center">
-  <img src="ML/01/plots/parallel/scree.png" width="600">
+  <img src="ML/01/plots/parallel_scree.png" width="600">
   <br>
   <em></em>
 </p>
