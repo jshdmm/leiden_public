@@ -129,7 +129,7 @@ The default `brms` flat priors on the treatment coefficients are non-informative
 <p align="center">
   <img src="plots/pp_check.png" width="600">
   <br>
-  <em>Posterior predictive check: predicted vs. observed yield, overall and grouped by treatment.</em>
+  <em>Posterior predictive check: average predicted vs. observed yield.</em>
 </p>
 
 **Results:**
