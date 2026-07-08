@@ -1,0 +1,239 @@
+---
+title: "Bayesian II Assignment 02"
+author: "Colin Yip & Joshua Damm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(brms)
+library(faraway)
+library(tidyverse) # Data manipulation
+library(forcats) # Factor manipulations
+library(ggplot2) # Plotting
+library(ggdist) # Uncertainty visualisation
+library(viridis) # Colour schemes
+library(latex2exp) # LaTeX labels
+library(brms) # Bayesian fitting
+library(bayesplot) # ggplot2-based package to plot MCMC output
+library(tidybayes) # Manipulate and visualise posterior draws
+library(emmeans) # Marginal means etc
+library(performance) # Some further helpers
+```
+
+
+## Introduction
+
+Penicillin production is dependent on corn steep liquor, which is highly variable in quality. These differences significantly impact the final yield of penicillin. In addition, there are numerous processes involving corn steep liquor to produce penicillin. This study seeks to assess the impact of blends and treatments on final production yield by implementing a randomized complete block design (RCBD). 5 blends of corn steep liquor were set up as blocks for 4 randomly ordered production processes. Doing this removed differences between blends and allows for statistically valid analysis. 
+
+## Data Import and Exploratory Data Analysis
+```{r}
+data(penicillin, package="faraway")
+summary(penicillin)
+```
+
+We have 20 data points comprising of the combinations of production processes/treatments (`treat`) and the blended liquors (`blend`), which are the blocks in the RCBD design. These two variables are categorical, with the final yield (`yield`) being a continuous variable. 
+
+```{r}
+ggplot(penicillin, aes(y = yield, x = treat, shape = treat, color = blend)) +
+  geom_point() +
+  geom_line(penicillin, mapping=aes(y=yield, x=treat, group=blend)) +
+  labs(x = "Treatment",
+       y = "Yield",
+       title = "Penicillin Yield for Blend/Treatment Combinations",
+       shape = "Treatment",
+       color = "Blend")
+
+```
+
+There are visually evident differences between the treatment levels. The variance in treatment A is considerably less than the spread in treatments B and C. Additionally, C exhibits a higher average yield than the other groups. Blend 1 clearly produces a higher yield than the other blends on average, with blend 5 potentially producing the least. It is also notable that blend 2 is highly variable between the various treatments. We validate these visual differences below by aggregating by both treatment and blend, respectively.  
+
+```{r}
+penicillin |>
+  group_by(treat) |>
+  summarise(treat_mu = mean(yield),
+            treat_sigma = sd(yield))
+
+penicillin |>
+  group_by(blend) |>
+  summarise(blend_mu = mean(yield),
+            blend_sigma = sd(yield))
+```
+
+Based on the study design and the data, we will perform analysis using a Bayesian hierarchical model that accounts for differences both within blocks and between blocks. We specify the model as follows $y_{i,j}=\mu_j+\beta x+\epsilon_{i,j}, \epsilon_{i,j}\sim N(0,\sigma_\epsilon)$, for treatments $j=1,\dots,4$ corresponding to treatments A through D, respectively. The intercept $\mu_j$ can be further decomposed into a cornerstone mean and the difference for a specific treatment mean, $\mu_j=\alpha+\alpha_j$. We can take $\beta$ to be the same across all blocks, as random ordering of the 4 treatments within each block nullifies the block differences. Furthermore, we assume no interaction between the block and the treatment as there is no evidence to support interaction.
+
+## Model Specification and Prior Selection
+We specify the model as follows, as `blend` is the blocking/grouping of the data, and `treat` is the covariate stratified across the blocks. As mentioned above, we take a cornerstone representation given the categorical nature of `treat`. This also aids with interpretability of the model later on.
+```{r}
+model_formula <- bf(yield ~ 1 + (1 | blend) + treat)
+```
+
+We check the default priors as given by `brms`.
+
+```{r}
+get_prior(formula =  model_formula, data = penicillin)
+```
+Clearly, the flat priors for the treatment groups are non-informative and illogical for a finitely bounded variable. While we have a smaller sample size, we do not see evidence to support the need for large tails on the intercept as the treatments are all quite close together in mean. As such, a normal prior will suffice for the intercept, centered on the mean of the response and with a $\sigma$ capturing the spread of the data. Assuming $N(0, 10)$ for the difference between treatment levels ensures that the maximum difference of 5 between treatment means is captured. For the between group variance, we use the $\text{Student}(3, 0, \lambda_\mu)$ distribution with $\lambda_\mu=10$ to fully capture the mean differences between blocks/groups. Finally, it is standard to assume an $Exp(\sigma_\epsilon^{-1})$ for the prior of the deviation. 
+
+```{r}
+# set priors manually? We do not have std_x, as we dont have a continuous covariate
+mu_y <- mean(penicillin$yield) # mean yield
+std_y <- sd(penicillin$yield) # Std yield
+
+mu_y # prior for intercept
+std_y # prior for sigma_E
+
+priors <- c(set_prior("normal(0, 10)", class = "b", coef = "treat1"), # Prior for the fixed effects (alpha_j)
+            set_prior("normal(0, 10)", class = "b", coef = "treat2"),
+            set_prior("normal(0, 10)", class = "b", coef = "treat3"),
+            set_prior("normal(86, 10)", class = "Intercept"), # Prior for the intercept (alpha)
+            set_prior("student_t(3, 0, 10)", # prior for between-group variance(sigma_mu)
+                       class = "sd",
+                       group = "blend",
+                       lb = 0),
+            set_prior("exponential(1.0 / 5.43)", class = "sigma", lb = 0) # Prior for the random effect (blends) / within-group variance (sigma_E), centered on sample standard deviation
+            )
+```
+## Model Fitting and Summary
+
+Having specified our priors, we now fit the model using `brms`.
+```{r}
+set.seed(12345678)
+bayesian_LMM <- brm(formula = model_formula,
+                      data = penicillin,
+                      prior = priors,
+                      seed = 12345678,
+                      control = list(adapt_delta = 0.9),
+                      cores = 4)
+summary(bayesian_LMM)
+```
+
+From the summary we can see that the chains have converged, as $\hat{R}$ is 1 across all parameters and the Effective Sample Sizes are large. We further validate this by checking the trace plots and autocorrelations of the chains.
+
+```{r}
+mcmc_trace(bayesian_LMM)
+```
+
+Looking at the trace plots, we can see that the MCMC sampler has mixed well as the chains have neither experienced very large jumps nor remained stagnant in one spot for a large number of steps, indicating that the parameter space has been thoroughly explored.
+
+```{r}
+mcmc_acf(bayesian_LMM)
+```
+
+The autocorrelation plots indicate that the chains have completely checked the posterior, with no high autocorrelation remaining. This indicates that no chain has gotten stuck on a local value, and the chains have roughly found a optimal solution within the parameter space. As such, we can confirm that the Markov chains of the model have converged.
+
+Looking at the model estimates, we can see that the impact of the between group/blend differences is significant with an estimated standard deviation of 4.36 and a 95% Credible Interval (CI) of $(0.49, 10.17)$. However, there is no significant difference of the treatments from the cornerstone treatment (treatment A) as all estimated coefficients have 95% CIs that include 0.We now look at the Bayesian $R^2$ to assess how much of the variance in the data the model can explain.
+
+```{r}
+regression_R2 <- bayes_R2(bayesian_LMM, summary = FALSE)
+regression_R2_df <- data.frame(R2 = regression_R2)
+mean(regression_R2_df$R2)
+
+regression_R2_df |>
+  ggplot(aes(x = R2)) +
+  stat_halfeye() + 
+  labs(title = "R^2 of Bayesian Hierarchical Model for Treatment Effect on Yield",
+       y = "Density")
+```
+
+We see an average $R^2$ of about 0.43, which indicates that the model can explain less than half of the total variation within the data. 
+
+
+
+```{r}
+# Between vs within variation
+icc(bayesian_LMM, by_group = TRUE)
+
+# Some other performance metrics
+model_performance(bayesian_LMM, metrics = "common", verbose = TRUE)
+```
+The intraclass correlation (ICC) suggests that there is more variabilty within-groups than between groups, meaning that the yield is more similar across blends than within blends.
+
+
+
+```{r}
+## Plot estimates
+
+bayesian_LMM_emm <- emmeans(bayesian_LMM, ~ treat)
+bayesian_LMM_emm
+
+emmip(bayesian_LMM, ~ treat, CI = TRUE)
+
+## Compare factor levels
+
+# All levels
+
+pairs(bayesian_LMM_emm)
+```
+Looking at the posterior means, one can see that treatment C shows the highest yield. However, when looking at the pairwise differences, each HPD interval includes 0, suggesting no significant difference between the treatment means.
+
+
+
+```{r}
+# PPC
+pp_check(bayesian_LMM, type = "scatter_avg") 
+
+pp_check(bayesian_LMM, type = "scatter_avg_grouped", group = "treat")
+```
+
+Overall, when comparing the predicted values from our posterior distribution to the observed values for yield  we can see that the model generally captures the overall trend across the treatment groups and also within the treatment groups. However, the residuals are substantially large, so there is a lot of variance in the data that could not be captured by the model, as also indicated by the low R2 and rather low ICC.
+
+```{r}
+## Diagnostics
+
+diagnostics_df <- penicillin
+
+diagnostics_df$fitted <- fitted(bayesian_LMM)[, 1]
+diagnostics_df$residuals <- residuals(bayesian_LMM)[, 1]
+
+# Q-Q plot
+
+diagnostics_df %>%
+  ggplot(aes(sample = residuals)) +
+  geom_qq() +
+  geom_qq_line(colour = "red")
+  
+# Residuals vs fitted
+
+diagnostics_df %>%
+  ggplot() +
+  geom_point(aes(x = fitted, y = residuals))
+
+# Residuals
+diagnostics_df %>%
+  ggplot() +
+  geom_point(aes(x = residuals, y = treat, colour = treat)) +
+  theme(legend.position = "bottom")  +
+  scale_colour_viridis_d(option = "turbo") +
+  guides(colour = guide_legend(title = "treatment")) +
+  xlab("residuals") +
+  ylab("treatment") # ancova_residuals
+```
+When considering model diagnostic checks, the QQ-plot of the residuals of our model suggests that the errors are normally distributed. Furthermore, the pattern in the distribution of the predicted values vs. the residuals is random. However, when looking at the distribution of rediduals within each treatment group, one can observe that the spread of the errors in treatment A is considerably lower than in treatments B, C, and D.   
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Fit frequentist ANOVA with treatment and block as predictors as a first glimpse
+
+```{r}
+op <- options(contrasts=c("contr.sum", "contr.poly"))
+lmod <- aov(yield ~ blend + treat, penicillin)
+summary(lmod)
+coef(lmod)
+```
+
+Frequentists ANOVA shows that there is no difference between the treatment groups, but there are significant differences in yield between the respective blends (blocks). However, in a frequentist ANOVA, we assume that the variance due to blends is constant across all levels of the treatments. A hierarchical model treats the block-to-block variability as a parameter to estimate. This is important because blends are inherently different, but that variability needs to be accounted for in the model.
+
+
